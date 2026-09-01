@@ -8,10 +8,12 @@ pub enum Credentials {
     /// Use the provided access token directly
     Token(String),
     /// OAuth2 client-credentials flow; exchange client_id/client_secret for an enterprise token at runtime
-    ClientCredentials {
+    Client {
         client_id: String,
         client_secret: String,
     },
+    /// No credentials available; only valid with --dry-run, which never sends a request
+    Anonymous,
 }
 
 impl Credentials {
@@ -19,7 +21,8 @@ impl Credentials {
     pub fn label(&self) -> &'static str {
         match self {
             Credentials::Token(_) => "access token",
-            Credentials::ClientCredentials { .. } => "client credentials (enterprise token)",
+            Credentials::Client { .. } => "client credentials (enterprise token)",
+            Credentials::Anonymous => "anonymous (dry-run, no request is sent)",
         }
     }
 }
@@ -30,6 +33,8 @@ pub struct Config {
     pub base_url: String,
     pub credentials: Credentials,
     pub verbose: bool,
+    pub json: bool,
+    pub dry_run: bool,
 }
 
 const DEFAULT_BASE_URL: &str = "https://api.pingcode.com";
@@ -57,16 +62,23 @@ impl Config {
             (None, Some(_)) => {
                 bail!("Client Secret provided but Client ID is missing: pass --client-id or set PC_CLIENT_ID")
             }
-            (Some(client_id), Some(client_secret)) => Credentials::ClientCredentials {
+            (Some(client_id), Some(client_secret)) => Credentials::Client {
                 client_id,
                 client_secret,
             },
             (None, None) => match cli.token.clone() {
                 Some(token) if !token.trim().is_empty() => Credentials::Token(token),
-                _ => bail!(
-                    "Missing credentials: use the client-credentials flow via PC_CLIENT_ID and PC_CLIENT_SECRET \
-                    (or --client-id/--client-secret), or provide an access token via --token / PC_TOKEN"
-                ),
+                _ => {
+                    // --dry-run 不会发起任何网络请求，因此允许离线运行而不提供凭据。
+                    if cli.dry_run {
+                        Credentials::Anonymous
+                    } else {
+                        bail!(
+                            "Missing credentials: use the client-credentials flow via PC_CLIENT_ID and PC_CLIENT_SECRET \
+                            (or --client-id/--client-secret), or provide an access token via --token / PC_TOKEN"
+                        )
+                    }
+                }
             },
         };
 
@@ -74,6 +86,8 @@ impl Config {
             base_url,
             credentials,
             verbose: cli.verbose,
+            json: cli.json,
+            dry_run: cli.dry_run,
         };
         Ok(config)
     }

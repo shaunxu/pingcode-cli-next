@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+use crate::commands::pjm;
+
 /// PingCode Open API command line client
 #[derive(Debug, Parser)]
 #[command(name = "pc", version, about, long_about = None)]
@@ -24,14 +26,27 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
+    /// Output raw JSON instead of human-readable text
+    #[arg(long, global = true)]
+    pub json: bool,
+
+    /// Print the HTTP request that would be sent without sending it; skips authentication
+    #[arg(long, global = true)]
+    pub dry_run: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Verify credentials and print the current authenticated user
-    Whoami,
+    /// Project management module: work items, sprints, releases, projects and more
+    Pjm {
+        #[command(subcommand)]
+        command: pjm::PjmCommand,
+    },
     /// Show authentication status along with the current team (enterprise) and user info
     State,
+    /// Print the current authenticated user
+    Whoami,
 }
