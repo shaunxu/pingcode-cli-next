@@ -1,0 +1,6 @@
+[alias]
+# cargo lint       —— clippy 严格模式检查全部目标
+lint = "clippy --all-targets -- -D warnings"
+# cargo check-fmt  —— 仅检查格式不写入
+check-fmt = "fmt --all -- --check"
+# cargo ci         —— 本地 CI：格式 + clippy + 测试（由 scripts/test.sh 串联）
