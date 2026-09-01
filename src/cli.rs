@@ -47,6 +47,4 @@ pub enum Command {
     },
     /// Show authentication status along with the current team (enterprise) and user info
     State,
-    /// Print the current authenticated user
-    Whoami,
 }

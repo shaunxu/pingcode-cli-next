@@ -4,4 +4,3 @@
 //! 不需要向三级命令那样声明资源/操作枚举。
 
 pub mod state;
-pub mod whoami;

@@ -69,7 +69,7 @@ fn invalid_base_url_fails() {
         .arg("not-a-url")
         .arg("--token")
         .arg("dummy")
-        .arg("whoami")
+        .arg("state")
         .assert()
         .failure()
         .stderr(predicate::str::contains("http://"));

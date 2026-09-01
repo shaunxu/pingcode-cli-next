@@ -65,7 +65,7 @@ cat payload.json | cargo run -- pjm workitem create --data @-
 cargo run -- --dry-run pjm workitem create --data '{"project_id":"p1","type_id":"t1","title":"x"}'
 ```
 
-少数命令不遵循三级模式（如 `state`、`whoami`），作为自由命令直接挂在顶层：
+少数命令不遵循三级模式（如 `state`），作为自由命令直接挂在顶层：
 
 ```bash
 cargo run -- --help
@@ -96,9 +96,9 @@ src/
   output.rs        # 输出与 --data 输入辅助（JSON 打印、@file/@- 读取）
   client/          # PingCode REST 客户端封装（get/post/patch/put/delete + dry-run）
   commands/
-    mod.rs         # 顶层分发：三级命令 → 模块目录；自由命令 → free/
+    mod.rs         # 顶层分发：三级命令 → 模块目录；自由命令 → dynamic/
     context.rs     # Ctx：命令执行上下文（client + config）
-    free/          # 自由命令（不遵循三级模式，如 state、whoami）
+    dynamic/       # 自由命令（不遵循三级模式，如 state）
     pjm/           # 三级命令示例模块（项目管理）
       workitem/    #   资源：工作项；每个操作一个文件（如 create.rs）
 tests/             # 集成测试
@@ -117,7 +117,7 @@ scripts/           # 构建 / 开发 / 测试脚本
 
 新增模块同理：在 `src/commands/` 下建模块目录，并在 `src/cli.rs` 的 `Command` 加变体。
 
-新增自由命令：在 `src/commands/free/` 下建文件，并在 `src/commands/mod.rs` 的顶层 match 加分支。
+新增自由命令：在 `src/commands/dynamic/` 下建文件，并在 `src/commands/mod.rs` 的顶层 match 加分支。
 
 ## 测试
 
