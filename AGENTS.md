@@ -22,30 +22,30 @@
 
 ## 代码约定
 
-- **面向用户的输出文字一律用中文**：clap 帮助文本、错误消息、`eprintln!` 提示。跟随现有 `cli.rs` / `config.rs` / `client/error.rs` 的写法，不要改成英文。
+- **CLI 面向用户的输出文字一律用英文**：clap 帮助文本（`#[command(about)]` / `#[arg(help)]` / doc comment）、错误消息（`bail!` / `anyhow` / `thiserror` 的 `#[error(...)]`）、`println!` / `eprintln!` 输出、`.expect()` 消息。跟随现有 `cli.rs` / `config.rs` / `client/error.rs` 的写法，不要写成中文。代码内部的注释和 doc comment 仍可用中文。
 - rustfmt：`max_width = 100`、Unix 换行（`rustfmt.toml`）。
 - 错误处理：库层用 `thiserror`（`ClientError`），应用层用 `anyhow`；`main()` 返回 `anyhow::Result`。
 
 ## 架构
 
 - `src/main.rs` — 入口：解析 CLI → `Config::from_cli` → `commands::run`。
-- `src/cli.rs` — clap derive 定义。全局参数 `--base-url` / `--token` / `-v`。
-- `src/config.rs` — 参数与环境变量合并；token 必填（`--token` 或 `PINGCODE_TOKEN`，缺失即报错）；base-url 默认 `https://api.pingcode.com`，必须以 `http(s)://` 开头。
-- `src/client/mod.rs` — `PingCodeClient`：reqwest + rustls，Bearer token 鉴权；`get(path)` 请求 `{base_url}{path}`，响应 JSON 反序列化为 `T`，非 2xx 返回 `ClientError::Api { status, body }`。
-- `src/commands/mod.rs` — 子命令分发（一个 `match`）。
+- `src/cli.rs` — clap derive 定义。全局参数 `--base-url` / `--client-id` / `--client-secret` / `--token` / `-v`，对应环境变量 `PC_OPEN_API_BASE_URL` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_TOKEN`。
+- `src/config.rs` — 参数与环境变量合并。认证二选一：客户端凭据模式（`PC_CLIENT_ID` + `PC_CLIENT_SECRET` 成对出现，缺一报错）或直接给令牌（`--token` / `PC_TOKEN`）；都没有即报错。base-url 默认 `https://api.pingcode.com`，必须以 `http(s)://` 开头。
+- `src/client/mod.rs` — `PingCodeClient::new()` 为 **async**：客户端凭据模式先 `GET /v1/auth/token?grant_type=client_credentials&client_id=...&client_secret=...` 换取企业令牌（见 `fetch_enterprise_token`），再以 Bearer token 鉴权。`get(path)` 请求 `{base_url}{path}`，响应 JSON 反序列化为 `T`，非 2xx 返回 `ClientError::Api { status, body }`。`Team`（`/v1/directory/team`，企业令牌可用）、`User`（`/v1/myself`，仅用户令牌可用）等响应模型也定义在此。
+- `src/commands/mod.rs` — 子命令分发（一个 `match`）。`state` 命令展示认证状态/企业/用户信息。
 - `tests/cli.rs` — assert_cmd 集成测试。
 
 **新增子命令**：在 `src/cli.rs` 的 `Command` 加变体，在 `src/commands/mod.rs` 的 `run()` 加分支，通过 `PingCodeClient` 发请求。
 
 ## 测试注意事项
 
-- 现有测试全部离线，不打真实 API。`tests/cli.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PINGCODE_TOKEN` / `PINGCODE_BASE_URL`，避免宿主环境污染断言——新增 CLI 测试沿用该模式。
-- 目前没有 mock server 或测试 fixtures；要测真实端点需要有效 token（`PINGCODE_TOKEN=xxx cargo run -- whoami`）。
+- 现有测试全部离线，不打真实 API。`tests/cli.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PC_TOKEN` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_OPEN_API_BASE_URL`，避免宿主环境污染断言——新增 CLI 测试沿用该模式。
+- 目前没有 mock server 或测试 fixtures；要测真实端点需要有效凭据（`PC_CLIENT_ID=xxx PC_CLIENT_SECRET=yyy cargo run -- state`）。
 - `whoami` 调用的 `/v1/user` 是**占位实现**，端点未经 PingCode API 文档确认，响应按 `serde_json::Value` 透传——不要假设其字段结构。
 
 ## 凭据与本地配置
 
-- 令牌不要提交。可在仓库根目录建 `.env`（已 gitignore），写 `export PINGCODE_TOKEN=...` 后 `source .env`；`cargo run` 不自动加载 `.env`。
+- 凭据不要提交。可在仓库根目录建 `.env`（已 gitignore）：`main()` 启动时通过 `dotenvy::dotenv()` 自动加载工作目录下的 `.env`，已存在的真实环境变量优先（不会被覆盖）。注意 `tests/cli.rs` 的 `pc()` helper 会 `current_dir(std::env::temp_dir())`，避免仓库根目录的 `.env` 污染断言。
 
 ## 在线文档检索（查 PingCode Open API 事实）
 

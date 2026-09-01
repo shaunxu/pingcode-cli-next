@@ -2,11 +2,33 @@ use anyhow::{bail, Result};
 
 use crate::cli::Cli;
 
-/// 运行期配置，由命令行参数与环境变量合并而来
+/// Authentication method
+#[derive(Debug, Clone)]
+pub enum Credentials {
+    /// Use the provided access token directly
+    Token(String),
+    /// OAuth2 client-credentials flow; exchange client_id/client_secret for an enterprise token at runtime
+    ClientCredentials {
+        client_id: String,
+        client_secret: String,
+    },
+}
+
+impl Credentials {
+    /// User-facing name of the authentication method
+    pub fn label(&self) -> &'static str {
+        match self {
+            Credentials::Token(_) => "access token",
+            Credentials::ClientCredentials { .. } => "client credentials (enterprise token)",
+        }
+    }
+}
+
+/// Runtime configuration, merged from CLI arguments and environment variables
 #[derive(Debug, Clone)]
 pub struct Config {
     pub base_url: String,
-    pub token: String,
+    pub credentials: Credentials,
     pub verbose: bool,
 }
 
@@ -21,20 +43,36 @@ impl Config {
             .trim_end_matches('/')
             .to_string();
 
-        let token = match cli.token.clone() {
-            Some(t) if !t.trim().is_empty() => t,
-            _ => bail!(
-                "缺少访问令牌：请通过 --token 参数或 PINGCODE_TOKEN 环境变量提供 PingCode 访问令牌"
-            ),
-        };
-
         if !base_url.starts_with("http://") && !base_url.starts_with("https://") {
-            bail!("base-url 必须以 http:// 或 https:// 开头，当前值为：{base_url}");
+            bail!("base-url must start with http:// or https://, got: {base_url}");
         }
+
+        let client_id = cli.client_id.clone().filter(|v| !v.trim().is_empty());
+        let client_secret = cli.client_secret.clone().filter(|v| !v.trim().is_empty());
+
+        let credentials = match (client_id, client_secret) {
+            (Some(_), None) => {
+                bail!("Client ID provided but Client Secret is missing: pass --client-secret or set PC_CLIENT_SECRET")
+            }
+            (None, Some(_)) => {
+                bail!("Client Secret provided but Client ID is missing: pass --client-id or set PC_CLIENT_ID")
+            }
+            (Some(client_id), Some(client_secret)) => Credentials::ClientCredentials {
+                client_id,
+                client_secret,
+            },
+            (None, None) => match cli.token.clone() {
+                Some(token) if !token.trim().is_empty() => Credentials::Token(token),
+                _ => bail!(
+                    "Missing credentials: use the client-credentials flow via PC_CLIENT_ID and PC_CLIENT_SECRET \
+                    (or --client-id/--client-secret), or provide an access token via --token / PC_TOKEN"
+                ),
+            },
+        };
 
         let config = Config {
             base_url,
-            token,
+            credentials,
             verbose: cli.verbose,
         };
         Ok(config)

@@ -1,18 +1,26 @@
 use clap::{Parser, Subcommand};
 
-/// PingCode Open API 命令行客户端
+/// PingCode Open API command line client
 #[derive(Debug, Parser)]
 #[command(name = "pc", version, about, long_about = None)]
 pub struct Cli {
-    /// PingCode API 基础地址（也可通过环境变量 PINGCODE_BASE_URL 设置）
-    #[arg(long, env = "PINGCODE_BASE_URL", global = true)]
+    /// PingCode Open API base URL (env: PC_OPEN_API_BASE_URL)
+    #[arg(long, env = "PC_OPEN_API_BASE_URL", global = true)]
     pub base_url: Option<String>,
 
-    /// 访问令牌（也可通过环境变量 PINGCODE_TOKEN 设置）
-    #[arg(long, env = "PINGCODE_TOKEN", global = true)]
+    /// Access token (env: PC_TOKEN); skips the client-credentials exchange when set
+    #[arg(long, env = "PC_TOKEN", global = true)]
     pub token: Option<String>,
 
-    /// 输出更详细的日志信息
+    /// Application Client ID (env: PC_CLIENT_ID), used for the client-credentials flow
+    #[arg(long, env = "PC_CLIENT_ID", global = true)]
+    pub client_id: Option<String>,
+
+    /// Application Client Secret (env: PC_CLIENT_SECRET), used for the client-credentials flow
+    #[arg(long, env = "PC_CLIENT_SECRET", global = true)]
+    pub client_secret: Option<String>,
+
+    /// Increase verbosity of log output
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
@@ -22,6 +30,8 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// 验证凭据并输出当前认证用户信息
+    /// Verify credentials and print the current authenticated user
     Whoami,
+    /// Show authentication status along with the current team (enterprise) and user info
+    State,
 }
