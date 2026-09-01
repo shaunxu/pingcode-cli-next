@@ -27,6 +27,7 @@
 - 全局参数（`--json`、`--dry-run`、`-v` 等）在 `cli.rs` 的 `Cli` 上用 `global = true` 声明，子命令前后均可放置。`--dry-run` 不换令牌、不发网络、允许无凭据；写操作的请求体统一通过 `--data` 传入（内联 / `@file` / `@-` stdin），用 `output::read_data` + `output::ensure_object` 解析。
 - rustfmt：`max_width = 100`、Unix 换行（`rustfmt.toml`）。
 - 错误处理：库层用 `thiserror`（`ClientError`），应用层用 `anyhow`；`main()` 返回 `anyhow::Result`。
+- **每个命令入口必须写明对应的官方文档地址**：新建命令（包括仅创建入口、`run()` 还是 `todo!()` 桩的情况）时，在操作文件的 `run` 函数 doc comment 中写入该端点的 REST 方法/路径与文档页面 URL（形如 `文档：https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`），同时在资源/模块 `mod.rs` 的枚举变体 doc comment 中附同一 URL（`Docs: <url>`），方便后续实现时引用核对。样板见 `src/commands/pjm/project/`。注意 `todo!()` 是格式化宏，消息文本中的路径参数用 `<project_id>` 形式而不是 `{project_id}`，避免被当成 format 占位符。
 
 ## 架构
 
@@ -80,4 +81,5 @@ python3 tools/search_nexus_docs.py "<英文关键词>" [--max-pages 3] [--max-sn
   python3 tools/search_nexus_docs.py "oauth scope permissions" --json
   ```
 - 检索后以返回结果中的**页面 URL 为依据**再动手写请求路径和反序列化结构体；查不到就如实说明，不要编造端点。
+- **只关注 URL 路径以 `restapi/pingcode/` 开头的结果**（如 `https://developer.alpha.pingcode.live/restapi/pingcode/getPjmProjects`）——这些才是 PingCode Open API 的 REST 端点页面。`restapi/nexus/...`（Nexus 扩展接口）、`reference/resource/...`（数据模型/扩展点参考）等其他前缀的结果与本 CLI 无关，命中后直接忽略，不要据其编写命令。
 - 该脚本不属于构建/测试流程，`./scripts/test.sh` 不涉及它。
