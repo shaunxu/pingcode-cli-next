@@ -47,10 +47,26 @@
 
 - 令牌不要提交。可在仓库根目录建 `.env`（已 gitignore），写 `export PINGCODE_TOKEN=...` 后 `source .env`；`cargo run` 不自动加载 `.env`。
 
-## 工具脚本
+## 在线文档检索（查 PingCode Open API 事实）
 
-- `tools/search_nexus_docs.py` — 纯标准库 Python 脚本，在线检索 PingCode/Nexus 开发者文档（developer.alpha.pingcode.live），用于查 API 事实：
+需要确认 PingCode Open API 的端点路径、请求/响应字段、鉴权 scope、参数或版本行为时，**不要凭记忆或猜测编写代码**，先运行 `tools/search_nexus_docs.py` 在线检索官方开发者文档（数据源：`https://developer.alpha.pingcode.live/sitemap.xml`）。典型场景：
+
+- 新增子命令、不确定该调用哪个 REST 路径（例如工作项、项目、用户相关接口）。
+- 不确定请求参数、响应 JSON 字段结构或分页方式。
+- 需要确认接口所需的权限 scope 名称。
+- 任何本地代码与注释未覆盖、可能编造的 API 细节。
+
+```bash
+# 在仓库根目录运行；纯标准库，无第三方依赖，不需要网络代理之外的任何配置
+python3 tools/search_nexus_docs.py "<英文关键词>" [--max-pages 3] [--max-snippet 600] [--json]
+```
+
+- 脚本流程：抓取 sitemap → 按 URL/标题/描述对关键词打分 → 下载排名靠前页面，提取 `<main>` 正文片段。**无本地缓存**，每次实时检索；无结果时退出码为 2。
+- **关键词必须用英文**：sitemap 中的 URL 路径是英文（如 `workitem`、`permissions`、`rest-api`），首轮打分依赖 URL 匹配，中文关键词命中率极低；返回的正文片段可以是中文。多词用空格分隔并加引号，例如：
   ```bash
-  python3 tools/search_nexus_docs.py "custom ui react" [--max-pages 3] [--json]
+  python3 tools/search_nexus_docs.py "work item rest api"
+  python3 tools/search_nexus_docs.py "project list" --max-pages 5
+  python3 tools/search_nexus_docs.py "oauth scope permissions" --json
   ```
-  不属于构建/测试流程，无第三方依赖。
+- 检索后以返回结果中的**页面 URL 为依据**再动手写请求路径和反序列化结构体；查不到就如实说明，不要编造端点。
+- 该脚本不属于构建/测试流程，`./scripts/test.sh` 不涉及它。
