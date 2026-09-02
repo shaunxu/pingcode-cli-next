@@ -14,12 +14,18 @@ pub mod project;
 pub mod project_member;
 pub mod project_property;
 pub mod project_state;
+pub mod sprint;
+pub mod sprint_category;
+pub mod sprint_section;
 pub mod workitem;
 
 use project::ProjectCommand;
 use project_member::ProjectMemberCommand;
 use project_property::ProjectPropertyCommand;
 use project_state::ProjectStateCommand;
+use sprint::SprintCommand;
+use sprint_category::SprintCategoryCommand;
+use sprint_section::SprintSectionCommand;
 use workitem::WorkitemCommand;
 
 /// `pc pjm` 的资源级子命令。
@@ -45,6 +51,21 @@ pub enum PjmCommand {
         #[command(subcommand)]
         command: ProjectStateCommand,
     },
+    /// Sprints (iterations)
+    Sprint {
+        #[command(subcommand)]
+        command: SprintCommand,
+    },
+    /// Sprint sections (iteration groups)
+    SprintSection {
+        #[command(subcommand)]
+        command: SprintSectionCommand,
+    },
+    /// Sprint categories (iteration categories)
+    SprintCategory {
+        #[command(subcommand)]
+        command: SprintCategoryCommand,
+    },
     /// Work items (requirements, tasks, bugs, ...)
     Workitem {
         #[command(subcommand)]
@@ -58,6 +79,9 @@ pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
         PjmCommand::ProjectMember { command } => project_member::run(ctx, command).await,
         PjmCommand::ProjectProperty { command } => project_property::run(ctx, command).await,
         PjmCommand::ProjectState { command } => project_state::run(ctx, command).await,
+        PjmCommand::Sprint { command } => sprint::run(ctx, command).await,
+        PjmCommand::SprintSection { command } => sprint_section::run(ctx, command).await,
+        PjmCommand::SprintCategory { command } => sprint_category::run(ctx, command).await,
         PjmCommand::Workitem { command } => workitem::run(ctx, command).await,
     }
 }
