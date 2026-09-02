@@ -1,0 +1,22 @@
+# committed (https://github.com/crate-ci/committed) 配置
+# 约定：Conventional Commits；放宽与仓库现有风格冲突的纯主观规则。
+style = "conventional"
+
+# 接受的提交类型（Conventional Commits 标准集）
+allowed_types = [
+  "feat",
+  "fix",
+  "docs",
+  "style",
+  "refactor",
+  "perf",
+  "test",
+  "build",
+  "ci",
+  "chore",
+  "revert",
+]
+
+# 描述沿用仓库现有小写风格，不强制首字母大写 / 祈使语气
+subject_capitalized = false
+imperative_subject = false

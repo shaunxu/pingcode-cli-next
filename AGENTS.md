@@ -20,6 +20,15 @@
 
 单测：`cargo test`；单个集成测试：`cargo test --test cli <test_name>`。
 
+## 提交信息规范
+
+所有 commit message 必须符合 [Conventional Commits](https://www.conventionalcommits.org/)：`<type>[optional scope]: <description>`。
+
+- 类型集：`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`build`、`ci`、`chore`、`revert`。示例：`feat(pjm): add workitem update command`。
+- 校验工具为 Rust 原生的 [committed](https://github.com/crate-ci/committed)（`cargo install committed`），不引入 Node 工具链。
+- **本地钩子**：克隆后运行一次 `./scripts/install-hooks.sh`（设置 `core.hooksPath=scripts/hooks`，钩子脚本在 `scripts/hooks/` 下随仓库版本化）。提交时 `commit-msg` 钩子即时校验；未安装 `committed` 时钩子只警告不阻断。`fixup!`/`squash!`/`wip!` 临时提交放行。
+- **CI 兜底**：`.github/workflows/commitlint.yml` 在每个 pull request 上用 `crate-ci/committed` action 校验 PR 内全部 commit（不合规则 CI 失败）；push 到 main 不拦截。历史 commit 不受影响。
+
 ## 代码约定
 
 - **CLI 面向用户的输出文字一律用英文**：clap 帮助文本（`#[command(about)]` / `#[arg(help)]` / doc comment）、错误消息（`bail!` / `anyhow` / `thiserror` 的 `#[error(...)]`）、`println!` / `eprintln!` 输出、`.expect()` 消息。跟随现有 `cli.rs` / `config.rs` / `client/error.rs` 的写法，不要写成中文。代码内部的注释和 doc comment 仍可用中文。

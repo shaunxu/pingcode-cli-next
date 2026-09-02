@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# git commit-msg 钩子：用 committed 校验 Conventional Commits 规范
+# 通过 scripts/install-hooks.sh 设置 core.hooksPath 后生效；
+# 未安装 committed 时仅警告跳过（CI 会兜底校验）。
+set -euo pipefail
+
+commit_msg_file="$1"
+
+if ! command -v committed >/dev/null 2>&1; then
+  echo "warning: 'committed' not found, skipping commit message check." >&2
+  echo "  install it with: cargo install committed" >&2
+  echo "  (CI will still enforce Conventional Commits on pull requests)" >&2
+  exit 0
+fi
+
+# --fixup / --wip: 允许 fixup!/squash! 及 wip/[WIP] 前缀的临时提交
+if ! committed --fixup --wip --commit-file "$commit_msg_file"; then
+  echo "" >&2
+  echo "commit message does not follow Conventional Commits." >&2
+  echo "expected format: <type>[optional scope]: <description>" >&2
+  echo "types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert" >&2
+  echo "example:      feat(pjm): add workitem update command" >&2
+  exit 1
+fi

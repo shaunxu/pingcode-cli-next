@@ -83,8 +83,22 @@ cargo run -- --token <TOKEN> state
 | `scripts/dev.sh`   | 运行；若安装了 `cargo-watch` 则自动热重载  |
 | `scripts/test.sh`  | 本地 CI：`fmt --check` + clippy + 测试     |
 | `scripts/lint.sh`  | 自动格式化并运行 clippy 严格检查           |
+| `scripts/install-hooks.sh` | 安装版本化的 git 钩子（commit message 校验） |
 
 也可使用 cargo aliases：`cargo lint`、`cargo check-fmt`。
+
+## 提交信息规范
+
+commit message 遵循 [Conventional Commits](https://www.conventionalcommits.org/)：`<type>[optional scope]: <description>`，类型为 `feat`/`fix`/`docs`/`style`/`refactor`/`perf`/`test`/`build`/`ci`/`chore`/`revert`，例如 `feat(pjm): add workitem update command`。
+
+克隆仓库后建议运行一次以启用本地提交校验（基于 Rust 原生的 [committed](https://github.com/crate-ci/committed)）：
+
+```bash
+cargo install committed      # 校验工具
+./scripts/install-hooks.sh   # 启用 commit-msg 钩子
+```
+
+未安装 `committed` 时钩子只警告不阻断；CI 会在每个 pull request 上强制校验（`.github/workflows/commitlint.yml`）。
 
 ## 项目结构
 
