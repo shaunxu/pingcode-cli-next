@@ -2,7 +2,7 @@
 
 ## 项目
 
-`pc` — PingCode Open API 的命令行客户端。单个 Rust 二进制 crate（edition 2021，Rust 1.75+），无 workspace、无 CI 工作流。
+`pc` — PingCode Open API 的命令行客户端。单个 Rust 二进制 crate（edition 2021，Rust 1.75+），无 workspace。
 
 ## 验证命令
 
@@ -28,6 +28,20 @@
 - 校验工具为 Rust 原生的 [committed](https://github.com/crate-ci/committed)（`cargo install committed`），不引入 Node 工具链。
 - **本地钩子**：克隆后运行一次 `./scripts/install-hooks.sh`（设置 `core.hooksPath=scripts/hooks`，钩子脚本在 `scripts/hooks/` 下随仓库版本化）。提交时 `commit-msg` 钩子即时校验；未安装 `committed` 时钩子只警告不阻断。`fixup!`/`squash!`/`wip!` 临时提交放行。
 - **CI 兜底**：`.github/workflows/commitlint.yml` 在每个 pull request 上用 `crate-ci/committed` action 校验 PR 内全部 commit（不合规则 CI 失败）；push 到 main 不拦截。历史 commit 不受影响。
+
+## 发布（维护者）
+
+发布是**项目级工具**，不是 `pc` 的子命令（类似 `npm run release`），用 `scripts/release.sh` 触发：
+
+```bash
+./scripts/release.sh --dry-run        # 仅预览新版本号与 CHANGELOG 条目，零副作用（输出 JSON）
+./scripts/release.sh                  # 自动按 Conventional Commits 计算 Semver 并发布
+./scripts/release.sh --version 0.2.0  # 手动指定版本号
+```
+
+- 发布工具是 `tools/release.py`（纯 Python 3 标准库，与 `tools/search_nexus_docs.py` 同风格，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`），不属于构建流程。
+- 流程：取最近 git tag（无 tag 则以 `Cargo.toml` 版本为基线）→ 解析基线后的 commits 定版本（0.x 阶段 feat→minor、fix/perf→patch、BREAKING→minor；1.0+ 按标准 Semver）→ 生成/更新 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）→ 更新 `Cargo.toml` 与 `Cargo.lock` 中 `pc` 的版本 → commit `chore(release): vX.Y.Z` → annotated tag `vX.Y.Z`（message 为 changelog 条目）→ push 分支与 tag。
+- tag 推送触发 `.github/workflows/release.yml`：在 ubuntu/macos/windows 上原生编译，产物以友好名打包（`pc-vX.Y.Z-linux-x86_64.tar.gz`、`pc-vX.Y.Z-macos-arm64.tar.gz`、`pc-vX.Y.Z-windows-x86_64.zip`），并用 `gh release create` 创建 GitHub Release、上传附件（正文取 tag annotation）。
 
 ## 代码约定
 
