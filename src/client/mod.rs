@@ -90,7 +90,19 @@ impl PingCodeClient {
 
     /// 对 `{base_url}{path}` 发起 GET 请求并将响应体反序列化为 `T`。
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, ClientError> {
-        self.request(reqwest::Method::GET, path, None).await
+        self.request(reqwest::Method::GET, path, None, None).await
+    }
+
+    /// 对 `{base_url}{path}` 发起带查询参数的 GET 请求。
+    ///
+    /// `query` 必须是 JSON object，值仅支持字符串/数字/布尔等扁平类型。
+    pub async fn get_with_query<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &Value,
+    ) -> Result<T, ClientError> {
+        self.request(reqwest::Method::GET, path, Some(query), None)
+            .await
     }
 
     /// 对 `{base_url}{path}` 发起 POST 请求，请求体为 JSON。
@@ -99,19 +111,18 @@ impl PingCodeClient {
         path: &str,
         body: &Value,
     ) -> Result<T, ClientError> {
-        self.request(reqwest::Method::POST, path, Some(body)).await
+        self.request(reqwest::Method::POST, path, None, Some(body))
+            .await
     }
 
     /// 对 `{base_url}{path}` 发起 PATCH 请求，请求体为 JSON。
-    ///
-    /// 框架方法：供后续新增的三级操作使用，当前尚无调用方。
-    #[allow(dead_code)]
     pub async fn patch<T: DeserializeOwned>(
         &self,
         path: &str,
         body: &Value,
     ) -> Result<T, ClientError> {
-        self.request(reqwest::Method::PATCH, path, Some(body)).await
+        self.request(reqwest::Method::PATCH, path, None, Some(body))
+            .await
     }
 
     /// 对 `{base_url}{path}` 发起 PUT 请求，请求体为 JSON。
@@ -123,7 +134,8 @@ impl PingCodeClient {
         path: &str,
         body: &Value,
     ) -> Result<T, ClientError> {
-        self.request(reqwest::Method::PUT, path, Some(body)).await
+        self.request(reqwest::Method::PUT, path, None, Some(body))
+            .await
     }
 
     /// 对 `{base_url}{path}` 发起 DELETE 请求。
@@ -131,16 +143,22 @@ impl PingCodeClient {
     /// 框架方法：供后续新增的三级操作使用，当前尚无调用方。
     #[allow(dead_code)]
     pub async fn delete<T: DeserializeOwned>(&self, path: &str) -> Result<T, ClientError> {
-        self.request(reqwest::Method::DELETE, path, None).await
+        self.request(reqwest::Method::DELETE, path, None, None)
+            .await
     }
 
     async fn request<T: DeserializeOwned>(
         &self,
         method: reqwest::Method,
         path: &str,
+        query: Option<&Value>,
         body: Option<&Value>,
     ) -> Result<T, ClientError> {
-        let url = format!("{}{}", self.base_url, path);
+        let query_string = query.and_then(encode_query);
+        let url = match &query_string {
+            Some(qs) => format!("{}{}?{}", self.base_url, path, qs),
+            None => format!("{}{}", self.base_url, path),
+        };
 
         if self.dry_run {
             // 预览写入 stderr；写入失败（如管道关闭）直接忽略，不值得中断 dry-run。
@@ -156,6 +174,52 @@ impl PingCodeClient {
         let resp = req.send().await?;
         handle(resp).await
     }
+}
+
+/// 将 JSON object 编码为 `application/x-www-form-urlencoded` 查询字符串。
+///
+/// 仅接受 object；值按 `true/false`、数字原样、字符串转义的方式编码，
+/// 嵌套对象/数组会被 JSON 序列化后转义。空对象返回 `None`。
+fn encode_query(query: &Value) -> Option<String> {
+    let object = query.as_object()?;
+    if object.is_empty() {
+        return None;
+    }
+
+    let mut parts = Vec::new();
+    for (key, value) in object {
+        if value.is_null() {
+            continue;
+        }
+        let raw = match value {
+            Value::String(s) => s.clone(),
+            Value::Bool(b) => b.to_string(),
+            Value::Number(n) => n.to_string(),
+            other => other.to_string(),
+        };
+        parts.push(format!("{}={}", percent_encode(key), percent_encode(&raw)));
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("&"))
+    }
+}
+
+/// RFC 3986 百分号编码（未保留字符不转义），与 reqwest 的 query 编码行为一致。
+fn percent_encode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for byte in input.bytes() {
+        let unreserved = matches!(byte,
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~');
+        if unreserved {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
 }
 
 /// 通过 OAuth2 客户端凭据模式（client_credentials）换取企业令牌。

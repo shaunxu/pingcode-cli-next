@@ -34,7 +34,7 @@
 - `src/main.rs` — 入口：解析 CLI → `Config::from_cli` → `commands::run`。
 - `src/cli.rs` — clap derive 定义。全局参数 `--base-url` / `--client-id` / `--client-secret` / `--token` / `-v`，对应环境变量 `PC_OPEN_API_BASE_URL` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_TOKEN`。
 - `src/config.rs` — 参数与环境变量合并。认证二选一：客户端凭据模式（`PC_CLIENT_ID` + `PC_CLIENT_SECRET` 成对出现，缺一报错）或直接给令牌（`--token` / `PC_TOKEN`）；都没有即报错。base-url 默认 `https://api.pingcode.com`，必须以 `http(s)://` 开头。
-- `src/client/mod.rs` — `PingCodeClient::new()` 为 **async**：客户端凭据模式先 `GET /v1/auth/token?grant_type=client_credentials&client_id=...&client_secret=...` 换取企业令牌（见 `fetch_enterprise_token`），再以 Bearer token 鉴权；`--dry-run` 时跳过换取。`get/post/patch/put/delete` 都基于私有 `request(method, path, body)`：请求 `{base_url}{path}`，响应 JSON 反序列化为 `T`，非 2xx 返回 `ClientError::Api { status, body }`；dry-run 时通过 `output::print_dry_run` 向 stderr 打印方法/URL/请求体并返回空值，不发网络。`Team`（`/v1/directory/team`，企业令牌可用）、`User`（`/v1/myself`，仅用户令牌可用）等响应模型也定义在此。
+- `src/client/mod.rs` — `PingCodeClient::new()` 为 **async**：客户端凭据模式先 `GET /v1/auth/token?grant_type=client_credentials&client_id=...&client_secret=...` 换取企业令牌（见 `fetch_enterprise_token`），再以 Bearer token 鉴权；`--dry-run` 时跳过换取。`get`/`get_with_query`（带查询参数，值拼为 `?k=v` 并百分号编码，dry-run 预览含完整 URL）/`post`/`patch`/`put`/`delete` 都基于私有 `request(method, path, query, body)`：请求 `{base_url}{path}`，响应 JSON 反序列化为 `T`，非 2xx 返回 `ClientError::Api { status, body }`；dry-run 时通过 `output::print_dry_run` 向 stderr 打印方法/URL/请求体并返回空值，不发网络。`Team`（`/v1/directory/team`，企业令牌可用）、`User`（`/v1/myself`，仅用户令牌可用）等响应模型也定义在此。
 - `src/output.rs` — `print_json`（pretty-print 到 stdout）、`read_data(spec)`（解析 `--data`：内联 JSON / `@file` / `@-` stdin，`@@` 转义字面量 `@`）、`ensure_object`（写操作请求体必须是 JSON object）、`print_dry_run`。
 - `src/commands/mod.rs` — 顶层分发（一个 `match`）：三级命令 `Command::Pjm { command }` → 模块目录的 `run()`；自由命令 `Command::State` → `commands/dynamic/`。
 - `src/commands/context.rs` — `Ctx { client, config }`，所有命令的执行上下文，命令签名统一为 `async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`。
@@ -61,11 +61,15 @@
 
 ## 在线文档检索（查 PingCode Open API 事实）
 
-需要确认 PingCode Open API 的端点路径、请求/响应字段、鉴权 scope、参数或版本行为时，**不要凭记忆或猜测编写代码**，先运行 `tools/search_nexus_docs.py` 在线检索官方开发者文档（数据源：`https://developer.alpha.pingcode.live/sitemap.xml`）。典型场景：
+需要确认 PingCode Open API 的端点路径、请求/响应字段、鉴权 scope、参数或版本行为时，**不要凭记忆或猜测编写代码**。
 
-- 新增子命令、不确定该调用哪个 REST 路径（例如工作项、项目、用户相关接口）。
-- 不确定请求参数、响应 JSON 字段结构或分页方式。
-- 需要确认接口所需的权限 scope 名称。
+**先读代码注释，不要先搜索**：每个命令的文档地址已经写在代码里——操作文件 `run` 函数的 doc comment 中有 `文档：https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`，资源/模块 `mod.rs` 的枚举变体 doc comment 中有同一 URL（`Docs: <url>`，约定见上方"代码约定"）。实现或修改命令时，直接打开注释中的 URL 核对接口细节即可（可用 webfetch 直接抓取该页面），**无需**再用搜索脚本找页面。
+
+只有以下情况才运行 `tools/search_nexus_docs.py` 在线检索（数据源：`https://developer.alpha.pingcode.live/sitemap.xml`）：
+
+- 代码注释里**没有**写文档 URL（注释缺失、或要新增的端点归属不明）。
+- 注释中的页面未覆盖所需细节（如折叠的嵌套数据结构、通用分页/约定），需要找其他相关页面。
+- 不确定某个端点是否存在、或不确定该调用哪个 REST 路径。
 - 任何本地代码与注释未覆盖、可能编造的 API 细节。
 
 ```bash
