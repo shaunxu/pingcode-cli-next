@@ -23,3 +23,6 @@ target
 # 本地环境变量（令牌等敏感信息）
 .env
 .env.*
+
+# Python
+__pycache__/
