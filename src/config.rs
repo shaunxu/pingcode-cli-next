@@ -33,7 +33,6 @@ pub struct Config {
     pub base_url: String,
     pub credentials: Credentials,
     pub verbose: bool,
-    pub json: bool,
     pub dry_run: bool,
 }
 
@@ -86,7 +85,6 @@ impl Config {
             base_url,
             credentials,
             verbose: cli.verbose,
-            json: cli.json,
             dry_run: cli.dry_run,
         };
         Ok(config)

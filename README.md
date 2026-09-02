@@ -27,8 +27,9 @@ cargo build --release     # 发布构建
 | `--client-secret`   | `PC_CLIENT_SECRET`       | 应用 Client Secret（客户端凭据模式）       |
 | `--token`           | `PC_TOKEN`               | 直接指定访问令牌，跳过客户端凭据换取       |
 | `-v/--verbose`      | -                        | 输出调试信息                               |
-| `--json`            | -                        | 输出原始 JSON 而非人类可读文本             |
 | `--dry-run`         | -                        | 只打印将要发出的 HTTP 请求，不实际发送；跳过鉴权，可离线运行 |
+
+所有命令的返回结果统一以 pretty-print JSON 输出到 stdout。
 
 所有全局参数既可放在子命令前，也可放在子命令后（如 `pc pjm workitem create --dry-run`）。
 
@@ -69,8 +70,7 @@ cargo run -- --dry-run pjm workitem create --data '{"project_id":"p1","type_id":
 
 ```bash
 cargo run -- --help
-cargo run -- state                      # 展示认证状态、企业与用户信息
-cargo run -- state --json               # 以 JSON 输出同样的信息
+cargo run -- state                      # 以 JSON 展示认证状态、企业与用户信息
 PC_CLIENT_ID=<ID> PC_CLIENT_SECRET=<SECRET> cargo run -- state
 cargo run -- --token <TOKEN> state
 ```

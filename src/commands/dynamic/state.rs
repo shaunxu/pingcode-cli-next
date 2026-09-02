@@ -33,59 +33,15 @@ pub async fn run(ctx: &Ctx) -> Result<()> {
     // /v1/myself 仅用户令牌可访问；企业令牌不关联用户，此调用预期返回错误。
     let user: Option<User> = ctx.client.get::<User>("/v1/myself").await.ok();
 
-    if config.json {
-        let payload = json!({
-            "authenticated": true,
-            "authentication_method": config.credentials.label(),
-            "base_url": config.base_url,
-            "team": team,
-            "user": user,
-        });
-        output::print_json(&payload)?;
-        return Ok(());
-    }
-
-    println!("Authentication status: authenticated");
-    println!("Authentication method: {}", config.credentials.label());
-    println!("API base URL:       {}", config.base_url);
-
-    println!();
-    println!("Team:");
-    println!("  Name: {}", team.name.as_deref().unwrap_or("-"));
-    println!("  ID:   {}", team.id.as_deref().unwrap_or("-"));
-    if let Some(domain) = team.secondary_domain.as_deref() {
-        println!("  Secondary domain: {domain}");
-    }
-    if let Some(url) = team.url.as_deref() {
-        println!("  URL:  {url}");
-    }
-
-    println!();
-    match &user {
-        Some(user) => {
-            println!("User:");
-            println!(
-                "  Name: {}",
-                user.display_name
-                    .as_deref()
-                    .or(user.name.as_deref())
-                    .unwrap_or("-")
-            );
-            println!("  ID:   {}", user.id.as_deref().unwrap_or("-"));
-            if let Some(email) = user.email.as_deref() {
-                println!("  Email: {email}");
-            }
-            if let Some(mobile) = user.mobile.as_deref() {
-                println!("  Mobile: {mobile}");
-            }
-            if let Some(status) = user.status.as_deref() {
-                println!("  Status: {status}");
-            }
-        }
-        None => {
-            println!("User: none (enterprise token is not associated with a user)");
-        }
-    }
+    // 所有命令统一输出 JSON。
+    let payload = json!({
+        "authenticated": true,
+        "authentication_method": config.credentials.label(),
+        "base_url": config.base_url,
+        "team": team,
+        "user": user,
+    });
+    output::print_json(&payload)?;
 
     Ok(())
 }

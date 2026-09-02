@@ -26,10 +26,6 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
-    /// Output raw JSON instead of human-readable text
-    #[arg(long, global = true)]
-    pub json: bool,
-
     /// Print the HTTP request that would be sent without sending it; skips authentication
     #[arg(long, global = true)]
     pub dry_run: bool,
