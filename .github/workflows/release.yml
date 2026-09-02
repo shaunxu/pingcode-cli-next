@@ -27,6 +27,9 @@ jobs:
             archive: pc-${{ github.ref_name }}-windows-x86_64.zip
             pack: zip
     runs-on: ${{ matrix.os }}
+    env:
+      TARGET: ${{ matrix.target }}
+      ARCHIVE: ${{ matrix.archive }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -36,26 +39,26 @@ jobs:
         with:
           key: release-${{ matrix.target }}
       - name: Build release binary
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        run: cargo build --release --locked --target $TARGET
       - name: Package (tar.gz)
         if: matrix.pack == 'tar'
         shell: bash
         run: |
           set -euo pipefail
-          stage="dist/${{ matrix.archive%.tar.gz }}"
+          stage="dist/${ARCHIVE%.tar.gz}"
           mkdir -p "$stage"
-          cp "target/${{ matrix.target }}/release/pc" "$stage/"
+          cp "target/$TARGET/release/pc" "$stage/"
           cp README.md LICENSE "$stage/"
-          tar -C dist -czf "dist/${{ matrix.archive }}" "$(basename "$stage")"
+          tar -C dist -czf "dist/$ARCHIVE" "$(basename "$stage")"
       - name: Package (zip)
         if: matrix.pack == 'zip'
         shell: pwsh
         run: |
-          $stage = "dist/${{ matrix.archive -replace '\.zip$','' }}"
+          $stage = "dist/$($env:ARCHIVE -replace '\.zip$','')"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/pc.exe" "$stage/"
+          Copy-Item "target/$env:TARGET/release/pc.exe" "$stage/"
           Copy-Item "README.md", "LICENSE" "$stage/"
-          Compress-Archive -Path "$stage/*" -DestinationPath "dist/${{ matrix.archive }}"
+          Compress-Archive -Path "$stage/*" -DestinationPath "dist/$env:ARCHIVE"
       - name: Create GitHub release and upload asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,6 +67,6 @@ jobs:
           set -euo pipefail
           git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > /tmp/release-notes.md
           gh release create "$GITHUB_REF_NAME" \
-            "dist/${{ matrix.archive }}" \
+            "dist/$ARCHIVE" \
             --title "$GITHUB_REF_NAME" \
             --notes-file /tmp/release-notes.md
