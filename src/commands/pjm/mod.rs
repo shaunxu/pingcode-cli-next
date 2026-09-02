@@ -10,6 +10,9 @@ use clap::Subcommand;
 
 use crate::commands::Ctx;
 
+pub mod board;
+pub mod board_entry;
+pub mod board_swimlane;
 pub mod project;
 pub mod project_member;
 pub mod project_property;
@@ -19,6 +22,9 @@ pub mod sprint_category;
 pub mod sprint_section;
 pub mod workitem;
 
+use board::BoardCommand;
+use board_entry::BoardEntryCommand;
+use board_swimlane::BoardSwimlaneCommand;
 use project::ProjectCommand;
 use project_member::ProjectMemberCommand;
 use project_property::ProjectPropertyCommand;
@@ -71,6 +77,21 @@ pub enum PjmCommand {
         #[command(subcommand)]
         command: WorkitemCommand,
     },
+    /// Boards (kanban)
+    Board {
+        #[command(subcommand)]
+        command: BoardCommand,
+    },
+    /// Board entries (kanban columns)
+    BoardEntry {
+        #[command(subcommand)]
+        command: BoardEntryCommand,
+    },
+    /// Board swimlanes
+    BoardSwimlane {
+        #[command(subcommand)]
+        command: BoardSwimlaneCommand,
+    },
 }
 
 pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
@@ -83,5 +104,8 @@ pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
         PjmCommand::SprintSection { command } => sprint_section::run(ctx, command).await,
         PjmCommand::SprintCategory { command } => sprint_category::run(ctx, command).await,
         PjmCommand::Workitem { command } => workitem::run(ctx, command).await,
+        PjmCommand::Board { command } => board::run(ctx, command).await,
+        PjmCommand::BoardEntry { command } => board_entry::run(ctx, command).await,
+        PjmCommand::BoardSwimlane { command } => board_swimlane::run(ctx, command).await,
     }
 }
