@@ -39,7 +39,8 @@ jobs:
         with:
           key: release-${{ matrix.target }}
       - name: Build release binary
-        run: cargo build --release --locked --target $TARGET
+        shell: bash
+        run: cargo build --release --locked --target "$TARGET"
       - name: Package (tar.gz)
         if: matrix.pack == 'tar'
         shell: bash
@@ -66,7 +67,9 @@ jobs:
         run: |
           set -euo pipefail
           git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > /tmp/release-notes.md
+          # 三个 job 并行：先到的创建 Release，其余直接上传附件。
           gh release create "$GITHUB_REF_NAME" \
             "dist/$ARCHIVE" \
             --title "$GITHUB_REF_NAME" \
-            --notes-file /tmp/release-notes.md
+            --notes-file /tmp/release-notes.md \
+            || gh release upload --clobber "$GITHUB_REF_NAME" "dist/$ARCHIVE"
