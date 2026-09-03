@@ -1,0 +1,74 @@
+//! 需求属性方案（idea property plan）资源：`pc ship idea-property-plan <operation>`。
+//!
+//! 对应「需求配置」中的属性方案 `/v1/ship/idea_property_plans` 及其直接子路径
+//! （方案内需求属性成员）的 REST 接口，scope 为 `pcp:(read|write):ship:configuration`。
+//!
+//! 方案本身只支持查询（list/get）；方案内的需求属性成员支持添加、查询与移除
+//! （不支持更新）。需求属性字典本身的创建/修改见 `pc ship idea-property`。
+//!
+//! 新增操作（operation）：
+//! 1. 在本目录新建操作文件，定义 clap 参数结构体与 `run(ctx, args)`；
+//! 2. 在 [`IdeaPropertyPlanCommand`] 枚举加一个变体，并在 [`run`] 的 match 中加一行分发。
+
+use clap::Subcommand;
+
+use crate::commands::Ctx;
+
+pub mod add_property;
+pub mod get;
+pub mod get_property;
+pub mod list;
+pub mod list_properties;
+pub mod remove_property;
+
+use add_property::AddPropertyArgs;
+use get::GetArgs;
+use get_property::GetPropertyArgs;
+use list::ListArgs;
+use list_properties::ListPropertiesArgs;
+use remove_property::RemovePropertyArgs;
+
+/// `pc ship idea-property-plan` 的操作级子命令。
+#[derive(Debug, Subcommand)]
+pub enum IdeaPropertyPlanCommand {
+    /// List idea property plans (GET /v1/ship/idea_property_plans)
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPropertyPlans
+    List(ListArgs),
+
+    /// Get an idea property plan by id (GET /v1/ship/idea_property_plans/{property_plan_id})
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPropertyPlansByPropertyPlanId
+    Get(GetArgs),
+
+    /// Add an idea property to a property plan (POST /v1/ship/idea_property_plans/{property_plan_id}/idea_properties)
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/postShipIdeaPropertyPlansByPropertyPlanIdIdeaProperties
+    AddProperty(AddPropertyArgs),
+
+    /// List idea properties in a property plan (GET /v1/ship/idea_property_plans/{property_plan_id}/idea_properties)
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPropertyPlansByPropertyPlanIdIdeaProperties
+    ListProperties(ListPropertiesArgs),
+
+    /// Get an idea property in a property plan (GET /v1/ship/idea_property_plans/{property_plan_id}/idea_properties/{property_id})
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPropertyPlansByPropertyPlanIdIdeaPropertiesByPropertyId
+    GetProperty(GetPropertyArgs),
+
+    /// Remove an idea property from a property plan (DELETE /v1/ship/idea_property_plans/{property_plan_id}/idea_properties/{property_id})
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/deleteShipIdeaPropertyPlansByPropertyPlanIdIdeaPropertiesByPropertyId
+    RemoveProperty(RemovePropertyArgs),
+}
+
+pub async fn run(ctx: &Ctx, command: IdeaPropertyPlanCommand) -> anyhow::Result<()> {
+    match command {
+        IdeaPropertyPlanCommand::List(args) => list::run(ctx, &args).await,
+        IdeaPropertyPlanCommand::Get(args) => get::run(ctx, &args).await,
+        IdeaPropertyPlanCommand::AddProperty(args) => add_property::run(ctx, &args).await,
+        IdeaPropertyPlanCommand::ListProperties(args) => list_properties::run(ctx, &args).await,
+        IdeaPropertyPlanCommand::GetProperty(args) => get_property::run(ctx, &args).await,
+        IdeaPropertyPlanCommand::RemoveProperty(args) => remove_property::run(ctx, &args).await,
+    }
+}

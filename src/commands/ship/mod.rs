@@ -10,6 +10,14 @@ use clap::Subcommand;
 
 use crate::commands::Ctx;
 
+pub mod idea;
+pub mod idea_plan;
+pub mod idea_priority;
+pub mod idea_property;
+pub mod idea_property_plan;
+pub mod idea_state;
+pub mod idea_suite;
+pub mod idea_transition;
 pub mod product;
 pub mod product_channel;
 pub mod product_customer;
@@ -31,6 +39,14 @@ pub mod ticket_tag;
 pub mod ticket_transition;
 pub mod ticket_type;
 
+use idea::IdeaCommand;
+use idea_plan::IdeaPlanCommand;
+use idea_priority::IdeaPriorityCommand;
+use idea_property::IdeaPropertyCommand;
+use idea_property_plan::IdeaPropertyPlanCommand;
+use idea_state::IdeaStateCommand;
+use idea_suite::IdeaSuiteCommand;
+use idea_transition::IdeaTransitionCommand;
 use product::ProductCommand;
 use product_channel::ProductChannelCommand;
 use product_customer::ProductCustomerCommand;
@@ -100,6 +116,46 @@ pub enum ShipCommand {
         #[command(subcommand)]
         command: ProductTicketTypeCommand,
     },
+    /// Ideas (feedback requirements)
+    Idea {
+        #[command(subcommand)]
+        command: IdeaCommand,
+    },
+    /// Idea transition histories (read-only)
+    IdeaTransition {
+        #[command(subcommand)]
+        command: IdeaTransitionCommand,
+    },
+    /// Idea states (read-only)
+    IdeaState {
+        #[command(subcommand)]
+        command: IdeaStateCommand,
+    },
+    /// Idea priorities (read-only)
+    IdeaPriority {
+        #[command(subcommand)]
+        command: IdeaPriorityCommand,
+    },
+    /// Idea properties / custom fields (idea configuration)
+    IdeaProperty {
+        #[command(subcommand)]
+        command: IdeaPropertyCommand,
+    },
+    /// Idea property plans (idea configuration)
+    IdeaPropertyPlan {
+        #[command(subcommand)]
+        command: IdeaPropertyPlanCommand,
+    },
+    /// Idea suites / requirement modules (read-only, per product)
+    IdeaSuite {
+        #[command(subcommand)]
+        command: IdeaSuiteCommand,
+    },
+    /// Idea plans / requirement schedules (read-only, per product)
+    IdeaPlan {
+        #[command(subcommand)]
+        command: IdeaPlanCommand,
+    },
     /// Tickets (customer feedback / support tickets)
     Ticket {
         #[command(subcommand)]
@@ -168,6 +224,14 @@ pub async fn run(ctx: &Ctx, command: ShipCommand) -> anyhow::Result<()> {
         ShipCommand::ProductChannel { command } => product_channel::run(ctx, command).await,
         ShipCommand::ProductPlan { command } => product_plan::run(ctx, command).await,
         ShipCommand::ProductTicketType { command } => product_ticket_type::run(ctx, command).await,
+        ShipCommand::Idea { command } => idea::run(ctx, command).await,
+        ShipCommand::IdeaTransition { command } => idea_transition::run(ctx, command).await,
+        ShipCommand::IdeaState { command } => idea_state::run(ctx, command).await,
+        ShipCommand::IdeaPriority { command } => idea_priority::run(ctx, command).await,
+        ShipCommand::IdeaProperty { command } => idea_property::run(ctx, command).await,
+        ShipCommand::IdeaPropertyPlan { command } => idea_property_plan::run(ctx, command).await,
+        ShipCommand::IdeaSuite { command } => idea_suite::run(ctx, command).await,
+        ShipCommand::IdeaPlan { command } => idea_plan::run(ctx, command).await,
         ShipCommand::Ticket { command } => ticket::run(ctx, command).await,
         ShipCommand::TicketTransition { command } => ticket_transition::run(ctx, command).await,
         ShipCommand::TicketType { command } => ticket_type::run(ctx, command).await,

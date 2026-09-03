@@ -41,7 +41,7 @@ pub enum Command {
         #[command(subcommand)]
         command: pjm::PjmCommand,
     },
-    /// Product and ticket management module: products, tickets, ticket configuration and more
+    /// Ship module: products, ideas, tickets and their configuration
     Ship {
         #[command(subcommand)]
         command: ship::ShipCommand,

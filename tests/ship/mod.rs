@@ -1,3 +1,11 @@
+mod idea;
+mod idea_plan;
+mod idea_priority;
+mod idea_property;
+mod idea_property_plan;
+mod idea_state;
+mod idea_suite;
+mod idea_transition;
 mod product;
 mod product_channel;
 mod product_customer;
