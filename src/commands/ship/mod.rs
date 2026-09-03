@@ -19,6 +19,17 @@ pub mod product_suite;
 pub mod product_tag;
 pub mod product_ticket_type;
 pub mod product_user;
+pub mod ticket;
+pub mod ticket_channel;
+pub mod ticket_priority;
+pub mod ticket_property;
+pub mod ticket_property_plan;
+pub mod ticket_solution;
+pub mod ticket_state;
+pub mod ticket_state_plan;
+pub mod ticket_tag;
+pub mod ticket_transition;
+pub mod ticket_type;
 
 use product::ProductCommand;
 use product_channel::ProductChannelCommand;
@@ -29,6 +40,17 @@ use product_suite::ProductSuiteCommand;
 use product_tag::ProductTagCommand;
 use product_ticket_type::ProductTicketTypeCommand;
 use product_user::ProductUserCommand;
+use ticket::TicketCommand;
+use ticket_channel::TicketChannelCommand;
+use ticket_priority::TicketPriorityCommand;
+use ticket_property::TicketPropertyCommand;
+use ticket_property_plan::TicketPropertyPlanCommand;
+use ticket_solution::TicketSolutionCommand;
+use ticket_state::TicketStateCommand;
+use ticket_state_plan::TicketStatePlanCommand;
+use ticket_tag::TicketTagCommand;
+use ticket_transition::TicketTransitionCommand;
+use ticket_type::TicketTypeCommand;
 
 /// `pc ship` 的资源级子命令。
 #[derive(Debug, Subcommand)]
@@ -78,6 +100,61 @@ pub enum ShipCommand {
         #[command(subcommand)]
         command: ProductTicketTypeCommand,
     },
+    /// Tickets (customer feedback / support tickets)
+    Ticket {
+        #[command(subcommand)]
+        command: TicketCommand,
+    },
+    /// Ticket transition histories (read-only)
+    TicketTransition {
+        #[command(subcommand)]
+        command: TicketTransitionCommand,
+    },
+    /// Ticket types (ticket configuration)
+    TicketType {
+        #[command(subcommand)]
+        command: TicketTypeCommand,
+    },
+    /// Ticket states (ticket configuration)
+    TicketState {
+        #[command(subcommand)]
+        command: TicketStateCommand,
+    },
+    /// Ticket state plans and state transitions (ticket configuration)
+    TicketStatePlan {
+        #[command(subcommand)]
+        command: TicketStatePlanCommand,
+    },
+    /// Ticket properties / custom fields (ticket configuration)
+    TicketProperty {
+        #[command(subcommand)]
+        command: TicketPropertyCommand,
+    },
+    /// Ticket property plans (ticket configuration)
+    TicketPropertyPlan {
+        #[command(subcommand)]
+        command: TicketPropertyPlanCommand,
+    },
+    /// Ticket priorities (read-only)
+    TicketPriority {
+        #[command(subcommand)]
+        command: TicketPriorityCommand,
+    },
+    /// Ticket solutions (read-only)
+    TicketSolution {
+        #[command(subcommand)]
+        command: TicketSolutionCommand,
+    },
+    /// Ticket tags (read-only, per product)
+    TicketTag {
+        #[command(subcommand)]
+        command: TicketTagCommand,
+    },
+    /// Ticket channels (read-only, per product)
+    TicketChannel {
+        #[command(subcommand)]
+        command: TicketChannelCommand,
+    },
 }
 
 pub async fn run(ctx: &Ctx, command: ShipCommand) -> anyhow::Result<()> {
@@ -91,5 +168,18 @@ pub async fn run(ctx: &Ctx, command: ShipCommand) -> anyhow::Result<()> {
         ShipCommand::ProductChannel { command } => product_channel::run(ctx, command).await,
         ShipCommand::ProductPlan { command } => product_plan::run(ctx, command).await,
         ShipCommand::ProductTicketType { command } => product_ticket_type::run(ctx, command).await,
+        ShipCommand::Ticket { command } => ticket::run(ctx, command).await,
+        ShipCommand::TicketTransition { command } => ticket_transition::run(ctx, command).await,
+        ShipCommand::TicketType { command } => ticket_type::run(ctx, command).await,
+        ShipCommand::TicketState { command } => ticket_state::run(ctx, command).await,
+        ShipCommand::TicketStatePlan { command } => ticket_state_plan::run(ctx, command).await,
+        ShipCommand::TicketProperty { command } => ticket_property::run(ctx, command).await,
+        ShipCommand::TicketPropertyPlan { command } => {
+            ticket_property_plan::run(ctx, command).await
+        }
+        ShipCommand::TicketPriority { command } => ticket_priority::run(ctx, command).await,
+        ShipCommand::TicketSolution { command } => ticket_solution::run(ctx, command).await,
+        ShipCommand::TicketTag { command } => ticket_tag::run(ctx, command).await,
+        ShipCommand::TicketChannel { command } => ticket_channel::run(ctx, command).await,
     }
 }
