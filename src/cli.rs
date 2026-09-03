@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{pjm, ship, testhub};
+use crate::commands::{pjm, ship, testhub, wiki};
 
 /// PingCode Open API command line client
 #[derive(Debug, Parser)]
@@ -50,6 +50,11 @@ pub enum Command {
     Testhub {
         #[command(subcommand)]
         command: testhub::TesthubCommand,
+    },
+    /// Wiki (knowledge management) module: spaces, space members and pages
+    Wiki {
+        #[command(subcommand)]
+        command: wiki::WikiCommand,
     },
     /// Show authentication status along with the current team (enterprise) and user info
     State,

@@ -11,6 +11,7 @@ pub mod dynamic;
 pub mod pjm;
 pub mod ship;
 pub mod testhub;
+pub mod wiki;
 
 use context::Ctx;
 
@@ -35,6 +36,11 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Testhub {
             command: testhub_command,
         } => testhub::run(&ctx, testhub_command).await,
+
+        // 三级命令：module -> resource -> operation
+        Command::Wiki {
+            command: wiki_command,
+        } => wiki::run(&ctx, wiki_command).await,
 
         // 自由命令：不遵循 module/resource/operation 模式
         Command::State => dynamic::state::run(&ctx).await,

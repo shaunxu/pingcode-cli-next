@@ -3,6 +3,7 @@ mod dynamic;
 mod pjm;
 mod ship;
 mod testhub;
+mod wiki;
 
 use common::pc;
 use predicates::prelude::*;
