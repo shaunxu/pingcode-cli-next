@@ -63,7 +63,7 @@
 - `src/commands/context.rs` — `Ctx { client, config }`，所有命令的执行上下文，命令签名统一为 `async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`。
 - `src/commands/dynamic/` — 自由命令（`state.rs` 以 JSON 展示认证状态/企业/用户信息，支持 `--dry-run`）。
 - `src/commands/pjm/` — 三级命令样板：`pjm/mod.rs` 定义模块枚举 `PjmCommand`（资源变体用 struct variant + `#[command(subcommand)]`）；`pjm/workitem/mod.rs` 定义资源枚举 `WorkitemCommand`（操作变体持有 `clap::Args` 参数结构体）；`pjm/workitem/create.rs` 是操作样板：`--data` → `POST /v1/pjm/workitems`。
-- `tests/cli.rs` — assert_cmd 集成测试（全部离线；dry-run 用例无凭据运行）。
+- `tests/` — assert_cmd 集成测试（全部离线；dry-run 用例无凭据运行）。crate 根为 `tests/cli.rs`（应用级测试 + 模块声明），公共 helper `pc()` 在 `tests/common/mod.rs`；测试按命令模块分目录组织，粒度到资源一级（同一资源的所有操作测试放同一文件）：`tests/dynamic/state.rs` 对应自由命令 `state`，`tests/pjm/<resource>.rs`（如 `pjm/workitem.rs`、`pjm/project.rs`）对应三级命令资源，文件间用 `mod` 声明串联。
 
 **新增三级命令**（module/resource/operation）：
 1. 资源目录下新建操作文件，如 `src/commands/pjm/workitem/create.rs`：`#[derive(Args)]` 参数结构体 + `pub async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`，写操作用 `output::read_data`/`ensure_object` 解析 `--data`，用 `ctx.client.<method>(path, ...)` 发请求，响应用 `output::print_json` 透传；
@@ -75,12 +75,12 @@
 
 ## 测试注意事项
 
-- 现有测试全部离线，不打真实 API。`tests/cli.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PC_TOKEN` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_OPEN_API_BASE_URL`，避免宿主环境污染断言——新增 CLI 测试沿用该模式。
+- 现有测试全部离线，不打真实 API。`tests/common/mod.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PC_TOKEN` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_OPEN_API_BASE_URL`，避免宿主环境污染断言——新增 CLI 测试沿用该模式：测试文件头部 `use crate::common::pc;`，按所属资源放进 `tests/pjm/<resource>.rs`（新资源需在 `tests/pjm/mod.rs` 加 `mod` 声明），自由命令放进 `tests/dynamic/`。
 - 目前没有 mock server 或测试 fixtures；要测真实端点需要有效凭据（`PC_CLIENT_ID=xxx PC_CLIENT_SECRET=yyy cargo run -- state`）。
 
 ## 凭据与本地配置
 
-- 凭据不要提交。可在仓库根目录建 `.env`（已 gitignore）：`main()` 启动时通过 `dotenvy::dotenv()` 自动加载工作目录下的 `.env`，已存在的真实环境变量优先（不会被覆盖）。注意 `tests/cli.rs` 的 `pc()` helper 会 `current_dir(std::env::temp_dir())`，避免仓库根目录的 `.env` 污染断言。
+- 凭据不要提交。可在仓库根目录建 `.env`（已 gitignore）：`main()` 启动时通过 `dotenvy::dotenv()` 自动加载工作目录下的 `.env`，已存在的真实环境变量优先（不会被覆盖）。注意 `tests/common/mod.rs` 的 `pc()` helper 会 `current_dir(std::env::temp_dir())`，避免仓库根目录的 `.env` 污染断言。
 
 ## 在线文档检索（查 PingCode Open API 事实）
 
