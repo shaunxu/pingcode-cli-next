@@ -13,6 +13,7 @@ use crate::commands::Ctx;
 pub mod board;
 pub mod board_entry;
 pub mod board_swimlane;
+pub mod deliverable;
 pub mod project;
 pub mod project_member;
 pub mod project_property;
@@ -21,10 +22,19 @@ pub mod sprint;
 pub mod sprint_category;
 pub mod sprint_section;
 pub mod workitem;
+pub mod workitem_priority;
+pub mod workitem_property;
+pub mod workitem_relation;
+pub mod workitem_relation_type;
+pub mod workitem_state;
+pub mod workitem_tag;
+pub mod workitem_transition;
+pub mod workitem_type;
 
 use board::BoardCommand;
 use board_entry::BoardEntryCommand;
 use board_swimlane::BoardSwimlaneCommand;
+use deliverable::DeliverableCommand;
 use project::ProjectCommand;
 use project_member::ProjectMemberCommand;
 use project_property::ProjectPropertyCommand;
@@ -33,6 +43,14 @@ use sprint::SprintCommand;
 use sprint_category::SprintCategoryCommand;
 use sprint_section::SprintSectionCommand;
 use workitem::WorkitemCommand;
+use workitem_priority::WorkitemPriorityCommand;
+use workitem_property::WorkitemPropertyCommand;
+use workitem_relation::WorkitemRelationCommand;
+use workitem_relation_type::WorkitemRelationTypeCommand;
+use workitem_state::WorkitemStateCommand;
+use workitem_tag::WorkitemTagCommand;
+use workitem_transition::WorkitemTransitionCommand;
+use workitem_type::WorkitemTypeCommand;
 
 /// `pc pjm` 的资源级子命令。
 #[derive(Debug, Subcommand)]
@@ -77,6 +95,51 @@ pub enum PjmCommand {
         #[command(subcommand)]
         command: WorkitemCommand,
     },
+    /// Work item tags (tag dictionary)
+    WorkitemTag {
+        #[command(subcommand)]
+        command: WorkitemTagCommand,
+    },
+    /// Work item relations between work items
+    WorkitemRelation {
+        #[command(subcommand)]
+        command: WorkitemRelationCommand,
+    },
+    /// Work item relation types (read-only)
+    WorkitemRelationType {
+        #[command(subcommand)]
+        command: WorkitemRelationTypeCommand,
+    },
+    /// Work item transition histories (read-only)
+    WorkitemTransition {
+        #[command(subcommand)]
+        command: WorkitemTransitionCommand,
+    },
+    /// Work item deliverable targets
+    Deliverable {
+        #[command(subcommand)]
+        command: DeliverableCommand,
+    },
+    /// Work item types (read-only)
+    WorkitemType {
+        #[command(subcommand)]
+        command: WorkitemTypeCommand,
+    },
+    /// Work item states (read-only)
+    WorkitemState {
+        #[command(subcommand)]
+        command: WorkitemStateCommand,
+    },
+    /// Work item properties / custom fields (read-only)
+    WorkitemProperty {
+        #[command(subcommand)]
+        command: WorkitemPropertyCommand,
+    },
+    /// Work item priorities (read-only)
+    WorkitemPriority {
+        #[command(subcommand)]
+        command: WorkitemPriorityCommand,
+    },
     /// Boards (kanban)
     Board {
         #[command(subcommand)]
@@ -104,6 +167,17 @@ pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
         PjmCommand::SprintSection { command } => sprint_section::run(ctx, command).await,
         PjmCommand::SprintCategory { command } => sprint_category::run(ctx, command).await,
         PjmCommand::Workitem { command } => workitem::run(ctx, command).await,
+        PjmCommand::WorkitemTag { command } => workitem_tag::run(ctx, command).await,
+        PjmCommand::WorkitemRelation { command } => workitem_relation::run(ctx, command).await,
+        PjmCommand::WorkitemRelationType { command } => {
+            workitem_relation_type::run(ctx, command).await
+        }
+        PjmCommand::WorkitemTransition { command } => workitem_transition::run(ctx, command).await,
+        PjmCommand::Deliverable { command } => deliverable::run(ctx, command).await,
+        PjmCommand::WorkitemType { command } => workitem_type::run(ctx, command).await,
+        PjmCommand::WorkitemState { command } => workitem_state::run(ctx, command).await,
+        PjmCommand::WorkitemProperty { command } => workitem_property::run(ctx, command).await,
+        PjmCommand::WorkitemPriority { command } => workitem_priority::run(ctx, command).await,
         PjmCommand::Board { command } => board::run(ctx, command).await,
         PjmCommand::BoardEntry { command } => board_entry::run(ctx, command).await,
         PjmCommand::BoardSwimlane { command } => board_swimlane::run(ctx, command).await,
