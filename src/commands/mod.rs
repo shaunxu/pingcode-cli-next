@@ -8,6 +8,7 @@
 
 pub mod context;
 pub mod dynamic;
+pub mod organization;
 pub mod pjm;
 pub mod ship;
 pub mod testhub;
@@ -22,6 +23,11 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
     let ctx = Ctx::new(config.clone()).await?;
 
     match command {
+        // 三级命令：module -> resource -> operation
+        Command::Organization {
+            command: organization_command,
+        } => organization::run(&ctx, organization_command).await,
+
         // 三级命令：module -> resource -> operation
         Command::Pjm {
             command: pjm_command,

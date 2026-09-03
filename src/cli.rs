@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{pjm, ship, testhub, wiki};
+use crate::commands::{organization, pjm, ship, testhub, wiki};
 
 /// PingCode Open API command line client
 #[derive(Debug, Parser)]
@@ -36,6 +36,11 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Organization module: enterprise/team, members, departments, groups, roles and jobs
+    Organization {
+        #[command(subcommand)]
+        command: organization::OrganizationCommand,
+    },
     /// Project management module: work items, sprints, releases, projects and more
     Pjm {
         #[command(subcommand)]
