@@ -18,6 +18,10 @@ pub mod project;
 pub mod project_member;
 pub mod project_property;
 pub mod project_state;
+pub mod release;
+pub mod release_category;
+pub mod release_section;
+pub mod release_stage;
 pub mod sprint;
 pub mod sprint_category;
 pub mod sprint_section;
@@ -39,6 +43,10 @@ use project::ProjectCommand;
 use project_member::ProjectMemberCommand;
 use project_property::ProjectPropertyCommand;
 use project_state::ProjectStateCommand;
+use release::ReleaseCommand;
+use release_category::ReleaseCategoryCommand;
+use release_section::ReleaseSectionCommand;
+use release_stage::ReleaseStageCommand;
 use sprint::SprintCommand;
 use sprint_category::SprintCategoryCommand;
 use sprint_section::SprintSectionCommand;
@@ -89,6 +97,26 @@ pub enum PjmCommand {
     SprintCategory {
         #[command(subcommand)]
         command: SprintCategoryCommand,
+    },
+    /// Releases
+    Release {
+        #[command(subcommand)]
+        command: ReleaseCommand,
+    },
+    /// Release sections (release groups)
+    ReleaseSection {
+        #[command(subcommand)]
+        command: ReleaseSectionCommand,
+    },
+    /// Release categories
+    ReleaseCategory {
+        #[command(subcommand)]
+        command: ReleaseCategoryCommand,
+    },
+    /// Release stages (enterprise-level configuration)
+    ReleaseStage {
+        #[command(subcommand)]
+        command: ReleaseStageCommand,
     },
     /// Work items (requirements, tasks, bugs, ...)
     Workitem {
@@ -166,6 +194,10 @@ pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
         PjmCommand::Sprint { command } => sprint::run(ctx, command).await,
         PjmCommand::SprintSection { command } => sprint_section::run(ctx, command).await,
         PjmCommand::SprintCategory { command } => sprint_category::run(ctx, command).await,
+        PjmCommand::Release { command } => release::run(ctx, command).await,
+        PjmCommand::ReleaseSection { command } => release_section::run(ctx, command).await,
+        PjmCommand::ReleaseCategory { command } => release_category::run(ctx, command).await,
+        PjmCommand::ReleaseStage { command } => release_stage::run(ctx, command).await,
         PjmCommand::Workitem { command } => workitem::run(ctx, command).await,
         PjmCommand::WorkitemTag { command } => workitem_tag::run(ctx, command).await,
         PjmCommand::WorkitemRelation { command } => workitem_relation::run(ctx, command).await,

@@ -147,6 +147,19 @@ impl PingCodeClient {
             .await
     }
 
+    /// 对 `{base_url}{path}` 发起带 JSON 请求体的 DELETE 请求。
+    ///
+    /// 个别端点（如删除已被发布引用的发布阶段）要求在 DELETE 时携带请求体
+    /// （例如 `{"replace_id": "..."}`），故与无请求体的 [`delete`](Self::delete) 区分。
+    pub async fn delete_with_body<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &Value,
+    ) -> Result<T, ClientError> {
+        self.request(reqwest::Method::DELETE, path, None, Some(body))
+            .await
+    }
+
     async fn request<T: DeserializeOwned>(
         &self,
         method: reqwest::Method,

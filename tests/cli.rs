@@ -1601,3 +1601,328 @@ fn dry_run_workitem_priority_get_previews_path() {
             "https://api.pingcode.com/v1/pjm/workitem_priorities/pri-1",
         ));
 }
+
+#[test]
+fn release_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("release")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"))
+        .stdout(predicate::str::contains("bulk-create"));
+}
+
+#[test]
+fn dry_run_release_list_previews_query() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release")
+        .arg("list")
+        .arg("prj-123")
+        .arg("--name")
+        .arg("v1.0")
+        .arg("--status")
+        .arg("in_progress")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/releases?",
+        ))
+        .stderr(predicate::str::contains("name=v1.0"))
+        .stderr(predicate::str::contains("status=in_progress"));
+}
+
+#[test]
+fn dry_run_release_get_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release")
+        .arg("get")
+        .arg("prj-123")
+        .arg("rel-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/releases/rel-1",
+        ));
+}
+
+#[test]
+fn dry_run_release_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release")
+        .arg("create")
+        .arg("prj-123")
+        .arg("--data")
+        .arg(r#"{"name":"v1.0","assignee_id":"u-1"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/releases",
+        ))
+        .stderr(predicate::str::contains("\"name\": \"v1.0\""));
+}
+
+#[test]
+fn dry_run_release_update_previews_patch() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release")
+        .arg("update")
+        .arg("prj-123")
+        .arg("rel-1")
+        .arg("--data")
+        .arg(r#"{"name":"v1.0.1"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] PATCH"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/releases/rel-1",
+        ));
+}
+
+#[test]
+fn dry_run_release_delete_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release")
+        .arg("delete")
+        .arg("prj-123")
+        .arg("rel-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/releases/rel-1",
+        ));
+}
+
+#[test]
+fn dry_run_release_bulk_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release")
+        .arg("bulk-create")
+        .arg("--data")
+        .arg(r#"{"releases":[{"project_id":"prj-1","name":"v1.0"}]}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/releases/bulk",
+        ))
+        .stderr(predicate::str::contains("\"releases\""));
+}
+
+#[test]
+fn release_stage_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("release-stage")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn dry_run_release_stage_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-stage")
+        .arg("list")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/release_stages",
+        ));
+}
+
+#[test]
+fn dry_run_release_stage_get_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-stage")
+        .arg("get")
+        .arg("stage-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/release_stages/stage-1",
+        ));
+}
+
+#[test]
+fn dry_run_release_stage_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-stage")
+        .arg("create")
+        .arg("--data")
+        .arg(r#"{"name":"Dev","type":"in_progress"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/release_stages",
+        ))
+        .stderr(predicate::str::contains("\"name\": \"Dev\""));
+}
+
+#[test]
+fn dry_run_release_stage_delete_previews_replace_id() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-stage")
+        .arg("delete")
+        .arg("stage-1")
+        .arg("--data")
+        .arg(r#"{"replace_id":"stage-2"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/release_stages/stage-1",
+        ))
+        .stderr(predicate::str::contains("\"replace_id\": \"stage-2\""));
+}
+
+#[test]
+fn release_section_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("release-section")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn dry_run_release_section_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-section")
+        .arg("list")
+        .arg("prj-123")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/release_sections",
+        ));
+}
+
+#[test]
+fn dry_run_release_section_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-section")
+        .arg("create")
+        .arg("prj-123")
+        .arg("--data")
+        .arg(r#"{"name":"2026 H1"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/release_sections",
+        ))
+        .stderr(predicate::str::contains("\"name\": \"2026 H1\""));
+}
+
+#[test]
+fn dry_run_release_section_delete_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-section")
+        .arg("delete")
+        .arg("prj-123")
+        .arg("sec-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/release_sections/sec-1",
+        ));
+}
+
+#[test]
+fn release_category_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("release-category")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn dry_run_release_category_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-category")
+        .arg("list")
+        .arg("prj-123")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/release_categories",
+        ));
+}
+
+#[test]
+fn dry_run_release_category_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-category")
+        .arg("create")
+        .arg("prj-123")
+        .arg("--data")
+        .arg(r#"{"name":"Mobile","section_id":"sec-1"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/release_categories",
+        ))
+        .stderr(predicate::str::contains("\"name\": \"Mobile\""));
+}
+
+#[test]
+fn dry_run_release_category_delete_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("release-category")
+        .arg("delete")
+        .arg("prj-123")
+        .arg("cat-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/projects/prj-123/release_categories/cat-1",
+        ));
+}
