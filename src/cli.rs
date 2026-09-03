@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::pjm;
+use crate::commands::{pjm, ship};
 
 /// PingCode Open API command line client
 #[derive(Debug, Parser)]
@@ -40,6 +40,11 @@ pub enum Command {
     Pjm {
         #[command(subcommand)]
         command: pjm::PjmCommand,
+    },
+    /// Product management module: products, members, suites, tags, users, customers and more
+    Ship {
+        #[command(subcommand)]
+        command: ship::ShipCommand,
     },
     /// Show authentication status along with the current team (enterprise) and user info
     State,

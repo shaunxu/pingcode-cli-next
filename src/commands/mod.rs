@@ -9,6 +9,7 @@
 pub mod context;
 pub mod dynamic;
 pub mod pjm;
+pub mod ship;
 
 use context::Ctx;
 
@@ -23,6 +24,11 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Pjm {
             command: pjm_command,
         } => pjm::run(&ctx, pjm_command).await,
+
+        // 三级命令：module -> resource -> operation
+        Command::Ship {
+            command: ship_command,
+        } => ship::run(&ctx, ship_command).await,
 
         // 自由命令：不遵循 module/resource/operation 模式
         Command::State => dynamic::state::run(&ctx).await,
