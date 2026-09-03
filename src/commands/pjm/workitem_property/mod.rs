@@ -1,10 +1,10 @@
-//! 工作项属性（workitem property）资源（只读）：
+//! 工作项属性（workitem property）资源：
 //! `pc pjm workitem-property <operation>`。
 //!
-//! 提供工作项自定义属性字典的查询：企业维度
-//! `/v1/pjm/workitem_properties`、项目+类型维度
-//! `/v1/pjm/workitem/properties` 与单条 `/v1/pjm/workitem_properties/{id}`。
-//! 属性的创建/修改/删除与属性方案配置属于「工作项配置」，不在本资源范围。
+//! 覆盖「工作项配置」中的工作项自定义属性字典：企业维度
+//! `/v1/pjm/workitem_properties`（list/get/create/update）与项目+类型
+//! 维度 `/v1/pjm/workitem/properties`（list-for-project，只读）。属性在
+//! 方案中的挂载/移除见 `pc pjm workitem-property-plan`。
 //!
 //! 新增操作（operation）：
 //! 1. 在本目录新建操作文件，定义 clap 参数结构体与 `run(ctx, args)`；
@@ -15,13 +15,17 @@ use clap::Subcommand;
 
 use crate::commands::Ctx;
 
+pub mod create;
 pub mod get;
 pub mod list;
 pub mod list_for_project;
+pub mod update;
 
+use create::CreateArgs;
 use get::GetArgs;
 use list::ListArgs;
 use list_for_project::ListForProjectArgs;
+use update::UpdateArgs;
 
 /// `pc pjm workitem-property` 的操作级子命令。
 #[derive(Debug, Subcommand)]
@@ -40,6 +44,16 @@ pub enum WorkitemPropertyCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemPropertiesByPropertyId
     Get(GetArgs),
+
+    /// Create a work item property (POST /v1/pjm/workitem_properties)
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/postPjmWorkitemProperties
+    Create(CreateArgs),
+
+    /// Partially update a work item property (PATCH /v1/pjm/workitem_properties/{property_id})
+    ///
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/patchPjmWorkitemPropertiesByPropertyId
+    Update(UpdateArgs),
 }
 
 pub async fn run(ctx: &Ctx, command: WorkitemPropertyCommand) -> anyhow::Result<()> {
@@ -47,5 +61,7 @@ pub async fn run(ctx: &Ctx, command: WorkitemPropertyCommand) -> anyhow::Result<
         WorkitemPropertyCommand::List(args) => list::run(ctx, &args).await,
         WorkitemPropertyCommand::ListForProject(args) => list_for_project::run(ctx, &args).await,
         WorkitemPropertyCommand::Get(args) => get::run(ctx, &args).await,
+        WorkitemPropertyCommand::Create(args) => create::run(ctx, &args).await,
+        WorkitemPropertyCommand::Update(args) => update::run(ctx, &args).await,
     }
 }

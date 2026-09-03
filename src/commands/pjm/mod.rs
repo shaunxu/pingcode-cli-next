@@ -16,6 +16,7 @@ pub mod board_swimlane;
 pub mod deliverable;
 pub mod project;
 pub mod project_member;
+pub mod project_process;
 pub mod project_property;
 pub mod project_state;
 pub mod release;
@@ -28,12 +29,15 @@ pub mod sprint_section;
 pub mod workitem;
 pub mod workitem_priority;
 pub mod workitem_property;
+pub mod workitem_property_plan;
 pub mod workitem_relation;
 pub mod workitem_relation_type;
 pub mod workitem_state;
+pub mod workitem_state_plan;
 pub mod workitem_tag;
 pub mod workitem_transition;
 pub mod workitem_type;
+pub mod workitem_type_plan;
 
 use board::BoardCommand;
 use board_entry::BoardEntryCommand;
@@ -41,6 +45,7 @@ use board_swimlane::BoardSwimlaneCommand;
 use deliverable::DeliverableCommand;
 use project::ProjectCommand;
 use project_member::ProjectMemberCommand;
+use project_process::ProjectProcessCommand;
 use project_property::ProjectPropertyCommand;
 use project_state::ProjectStateCommand;
 use release::ReleaseCommand;
@@ -53,12 +58,15 @@ use sprint_section::SprintSectionCommand;
 use workitem::WorkitemCommand;
 use workitem_priority::WorkitemPriorityCommand;
 use workitem_property::WorkitemPropertyCommand;
+use workitem_property_plan::WorkitemPropertyPlanCommand;
 use workitem_relation::WorkitemRelationCommand;
 use workitem_relation_type::WorkitemRelationTypeCommand;
 use workitem_state::WorkitemStateCommand;
+use workitem_state_plan::WorkitemStatePlanCommand;
 use workitem_tag::WorkitemTagCommand;
 use workitem_transition::WorkitemTransitionCommand;
 use workitem_type::WorkitemTypeCommand;
+use workitem_type_plan::WorkitemTypePlanCommand;
 
 /// `pc pjm` 的资源级子命令。
 #[derive(Debug, Subcommand)]
@@ -82,6 +90,11 @@ pub enum PjmCommand {
     ProjectState {
         #[command(subcommand)]
         command: ProjectStateCommand,
+    },
+    /// Project processes (project configuration, read-only)
+    ProjectProcess {
+        #[command(subcommand)]
+        command: ProjectProcessCommand,
     },
     /// Sprints (iterations)
     Sprint {
@@ -148,20 +161,35 @@ pub enum PjmCommand {
         #[command(subcommand)]
         command: DeliverableCommand,
     },
-    /// Work item types (read-only)
+    /// Work item types (work item configuration)
     WorkitemType {
         #[command(subcommand)]
         command: WorkitemTypeCommand,
     },
-    /// Work item states (read-only)
+    /// Work item type plans (work item configuration)
+    WorkitemTypePlan {
+        #[command(subcommand)]
+        command: WorkitemTypePlanCommand,
+    },
+    /// Work item states (work item configuration)
     WorkitemState {
         #[command(subcommand)]
         command: WorkitemStateCommand,
     },
-    /// Work item properties / custom fields (read-only)
+    /// Work item state plans and state transitions (work item configuration)
+    WorkitemStatePlan {
+        #[command(subcommand)]
+        command: WorkitemStatePlanCommand,
+    },
+    /// Work item properties / custom fields (work item configuration)
     WorkitemProperty {
         #[command(subcommand)]
         command: WorkitemPropertyCommand,
+    },
+    /// Work item property plans (work item configuration)
+    WorkitemPropertyPlan {
+        #[command(subcommand)]
+        command: WorkitemPropertyPlanCommand,
     },
     /// Work item priorities (read-only)
     WorkitemPriority {
@@ -191,6 +219,7 @@ pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
         PjmCommand::ProjectMember { command } => project_member::run(ctx, command).await,
         PjmCommand::ProjectProperty { command } => project_property::run(ctx, command).await,
         PjmCommand::ProjectState { command } => project_state::run(ctx, command).await,
+        PjmCommand::ProjectProcess { command } => project_process::run(ctx, command).await,
         PjmCommand::Sprint { command } => sprint::run(ctx, command).await,
         PjmCommand::SprintSection { command } => sprint_section::run(ctx, command).await,
         PjmCommand::SprintCategory { command } => sprint_category::run(ctx, command).await,
@@ -207,8 +236,13 @@ pub async fn run(ctx: &Ctx, command: PjmCommand) -> anyhow::Result<()> {
         PjmCommand::WorkitemTransition { command } => workitem_transition::run(ctx, command).await,
         PjmCommand::Deliverable { command } => deliverable::run(ctx, command).await,
         PjmCommand::WorkitemType { command } => workitem_type::run(ctx, command).await,
+        PjmCommand::WorkitemTypePlan { command } => workitem_type_plan::run(ctx, command).await,
         PjmCommand::WorkitemState { command } => workitem_state::run(ctx, command).await,
+        PjmCommand::WorkitemStatePlan { command } => workitem_state_plan::run(ctx, command).await,
         PjmCommand::WorkitemProperty { command } => workitem_property::run(ctx, command).await,
+        PjmCommand::WorkitemPropertyPlan { command } => {
+            workitem_property_plan::run(ctx, command).await
+        }
         PjmCommand::WorkitemPriority { command } => workitem_priority::run(ctx, command).await,
         PjmCommand::Board { command } => board::run(ctx, command).await,
         PjmCommand::BoardEntry { command } => board_entry::run(ctx, command).await,

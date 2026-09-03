@@ -1389,7 +1389,58 @@ fn workitem_type_help_lists_operations() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("list-for-project"))
-        .stdout(predicate::str::contains("get"));
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn dry_run_workitem_type_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type")
+        .arg("create")
+        .arg("--data")
+        .arg(r#"{"name":"Custom type"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_types",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_update_previews_patch() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type")
+        .arg("update")
+        .arg("wt-1")
+        .arg("--data")
+        .arg(r#"{"name":"Renamed"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] PATCH"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_types/wt-1",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_delete_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type")
+        .arg("delete")
+        .arg("wt-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_types/wt-1",
+        ));
 }
 
 #[test]
@@ -1445,8 +1496,58 @@ fn workitem_state_help_lists_operations() {
         .arg("--help")
         .assert()
         .success()
+        .stdout(predicate::str::contains("list-all"))
         .stdout(predicate::str::contains("list-for-project"))
-        .stdout(predicate::str::contains("get"));
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"));
+}
+
+#[test]
+fn dry_run_workitem_state_list_all_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state")
+        .arg("list-all")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_states",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state")
+        .arg("create")
+        .arg("--data")
+        .arg(r#"{"name":"Custom state"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_states",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_update_previews_patch() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state")
+        .arg("update")
+        .arg("st-1")
+        .arg("--data")
+        .arg(r#"{"name":"Renamed"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] PATCH"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_states/st-1",
+        ));
 }
 
 #[test]
@@ -1493,7 +1594,42 @@ fn workitem_property_help_lists_operations() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("list-for-project"))
-        .stdout(predicate::str::contains("get"));
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"));
+}
+
+#[test]
+fn dry_run_workitem_property_create_previews_request() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property")
+        .arg("create")
+        .arg("--data")
+        .arg(r#"{"name":"Custom field"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_properties",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_property_update_previews_patch() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property")
+        .arg("update")
+        .arg("prop-1")
+        .arg("--data")
+        .arg(r#"{"name":"Renamed field"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] PATCH"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_properties/prop-1",
+        ));
 }
 
 #[test]
@@ -1924,5 +2060,437 @@ fn dry_run_release_category_delete_previews_delete() {
         .stderr(predicate::str::contains("[dry-run] DELETE"))
         .stderr(predicate::str::contains(
             "https://api.pingcode.com/v1/pjm/projects/prj-123/release_categories/cat-1",
+        ));
+}
+
+#[test]
+fn project_process_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("project-process")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"));
+}
+
+#[test]
+fn dry_run_project_process_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("project-process")
+        .arg("list")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/processes",
+        ));
+}
+
+#[test]
+fn dry_run_project_process_get_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("project-process")
+        .arg("get")
+        .arg("proc-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/processes/proc-1",
+        ));
+}
+
+#[test]
+fn workitem_type_plan_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("add-type"))
+        .stdout(predicate::str::contains("list-types"))
+        .stdout(predicate::str::contains("get-type"))
+        .stdout(predicate::str::contains("update-type"))
+        .stdout(predicate::str::contains("remove-type"));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("list")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_list_for_project_previews_query() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("list")
+        .arg("--project-id")
+        .arg("prj-123")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans?",
+        ))
+        .stderr(predicate::str::contains("project_id=prj-123"));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_get_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("get")
+        .arg("tp-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans/tp-1",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_add_type_previews_post() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("add-type")
+        .arg("tp-1")
+        .arg("--data")
+        .arg(r#"{"workitem_type_id":"wt-2"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans/tp-1/workitem_types",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_list_types_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("list-types")
+        .arg("tp-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans/tp-1/workitem_types",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_get_type_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("get-type")
+        .arg("tp-1")
+        .arg("wt-2")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans/tp-1/workitem_types/wt-2",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_update_type_previews_patch() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("update-type")
+        .arg("tp-1")
+        .arg("wt-2")
+        .arg("--data")
+        .arg(r#"{"default":true}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] PATCH"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans/tp-1/workitem_types/wt-2",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_type_plan_remove_type_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-type-plan")
+        .arg("remove-type")
+        .arg("tp-1")
+        .arg("wt-2")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_type_plans/tp-1/workitem_types/wt-2",
+        ));
+}
+
+#[test]
+fn workitem_state_plan_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("add-state"))
+        .stdout(predicate::str::contains("list-states"))
+        .stdout(predicate::str::contains("get-state"))
+        .stdout(predicate::str::contains("remove-state"))
+        .stdout(predicate::str::contains("add-flow"))
+        .stdout(predicate::str::contains("list-flows"))
+        .stdout(predicate::str::contains("get-flow"))
+        .stdout(predicate::str::contains("remove-flow"));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("list")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_add_state_previews_post() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("add-state")
+        .arg("sp-1")
+        .arg("--data")
+        .arg(r#"{"workitem_state_id":"st-2"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_states",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_get_state_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("get-state")
+        .arg("sp-1")
+        .arg("st-2")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_states/st-2",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_remove_state_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("remove-state")
+        .arg("sp-1")
+        .arg("st-2")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_states/st-2",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_add_flow_previews_post() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("add-flow")
+        .arg("sp-1")
+        .arg("--data")
+        .arg(r#"{"from_state_id":"st-1","to_state_id":"st-2"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_state_flows",
+        ))
+        .stderr(predicate::str::contains("\"to_state_id\": \"st-2\""));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_list_flows_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("list-flows")
+        .arg("sp-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_state_flows",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_get_flow_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("get-flow")
+        .arg("sp-1")
+        .arg("flow-9")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_state_flows/flow-9",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_state_plan_remove_flow_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-state-plan")
+        .arg("remove-flow")
+        .arg("sp-1")
+        .arg("flow-9")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_state_plans/sp-1/workitem_state_flows/flow-9",
+        ));
+}
+
+#[test]
+fn workitem_property_plan_help_lists_operations() {
+    pc().arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("get"))
+        .stdout(predicate::str::contains("add-property"))
+        .stdout(predicate::str::contains("list-properties"))
+        .stdout(predicate::str::contains("get-property"))
+        .stdout(predicate::str::contains("remove-property"));
+}
+
+#[test]
+fn dry_run_workitem_property_plan_list_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("list")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_property_plans",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_property_plan_get_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("get")
+        .arg("pp-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_property_plans/pp-1",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_property_plan_add_property_previews_post() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("add-property")
+        .arg("pp-1")
+        .arg("--data")
+        .arg(r#"{"workitem_property_id":"prop-2"}"#)
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] POST"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_property_plans/pp-1/workitem_properties",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_property_plan_list_properties_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("list-properties")
+        .arg("pp-1")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] GET"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_property_plans/pp-1/workitem_properties",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_property_plan_get_property_previews_path() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("get-property")
+        .arg("pp-1")
+        .arg("prop-2")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_property_plans/pp-1/workitem_properties/prop-2",
+        ));
+}
+
+#[test]
+fn dry_run_workitem_property_plan_remove_property_previews_delete() {
+    pc().arg("--dry-run")
+        .arg("pjm")
+        .arg("workitem-property-plan")
+        .arg("remove-property")
+        .arg("pp-1")
+        .arg("prop-2")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("[dry-run] DELETE"))
+        .stderr(predicate::str::contains(
+            "https://api.pingcode.com/v1/pjm/workitem_property_plans/pp-1/workitem_properties/prop-2",
         ));
 }
