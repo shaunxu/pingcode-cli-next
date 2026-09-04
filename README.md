@@ -2,6 +2,31 @@
 
 Command Line Interface for PingCode Open API.
 
+## 安装
+
+发布的二进制托管在 [GitHub Releases](https://github.com/shaunxu/pingcode-cli-next/releases)，支持 Linux (x86_64)、macOS (Apple Silicon) 和 Windows (x86_64)。
+
+**Shell（Linux / macOS）一键安装：**
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/shaunxu/pingcode-cli-next/releases/latest/download/pc-installer.sh | sh
+```
+
+**PowerShell（Windows）一键安装：**
+
+```powershell
+irm https://github.com/shaunxu/pingcode-cli-next/releases/latest/download/pc-installer.ps1 | iex
+```
+
+**Homebrew：**
+
+```bash
+brew tap shaunxu/tap
+brew install pc
+```
+
+也可以直接从 Releases 页面下载对应平台的压缩包（`.tar.xz` / `.zip`，附带 `.sha256` 校验文件）解压使用。
+
 ## 环境要求
 
 - Rust 1.75+（推荐使用 stable 最新版）
@@ -83,6 +108,7 @@ cargo run -- --token <TOKEN> state
 | `scripts/dev.sh`   | 运行；若安装了 `cargo-watch` 则自动热重载  |
 | `scripts/test.sh`  | 本地 CI：`fmt --check` + clippy + 测试     |
 | `scripts/lint.sh`  | 自动格式化并运行 clippy 严格检查           |
+| `scripts/release.sh` | 发版：计算版本号 → cargo-release 提交/tag/push（详见下节） |
 | `scripts/install-hooks.sh` | 安装版本化的 git 钩子（commit message 校验） |
 
 也可使用 cargo aliases：`cargo lint`、`cargo check-fmt`。
@@ -133,8 +159,28 @@ scripts/           # 构建 / 开发 / 测试脚本
 
 新增自由命令：在 `src/commands/dynamic/` 下建文件，并在 `src/commands/mod.rs` 的顶层 match 加分支。
 
+## 发布
+
+发版由 `scripts/release.sh` 驱动（本地需先 `cargo install cargo-release cargo-dist`）：
+
+```bash
+./scripts/release.sh                 # 按 v0.3.0 之后的 Conventional Commits 自动计算 Semver
+./scripts/release.sh --version 0.4.0 # 手动指定版本号
+./scripts/release.sh --dry-run       # 只预览版本号、changelog 与 cargo-release 计划，零副作用
+```
+
+流程：`tools/release.py` 依据最近 tag 之后的 `feat`/`fix`/`perf` 提交推断版本（0.x 阶段 breaking/feat → minor、fix/perf → patch），再由 [cargo-release](https://github.com/crate-ci/cargo-release) 更新 `Cargo.toml`/`Cargo.lock`、通过 pre-release-hook 重写 `CHANGELOG.md`、提交 `chore(release): vX.Y.Z`、打 tag 并 push。tag 推送触发 [cargo-dist](https://github.com/axodotdev/cargo-dist) 的 GitHub Actions workflow（`.github/workflows/release.yml`）：在 Linux/macOS/Windows 交叉编译、打包并生成 sha256，创建 GitHub Release、发布 shell/PowerShell 安装脚本，并把 Homebrew formula 推送到 [shaunxu/homebrew-tap](https://github.com/shaunxu/homebrew-tap)。
+
+cargo-dist 的配置在 `dist-workspace.toml`（改完运行 `dist generate` 重新生成 workflow）；cargo-release 的配置在 `release.toml`。
+
 ## 测试
 
 ```bash
 ./scripts/test.sh  # 或 cargo test
+```
+
+发版工具自身的离线单测：
+
+```bash
+python3 -m unittest tools/test_release.py -v
 ```

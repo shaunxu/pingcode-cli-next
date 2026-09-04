@@ -3,6 +3,7 @@
     python3 -m unittest tools/test_release.py -v
 """
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,13 +14,43 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import release  # noqa: E402
 
 
+def git(repo: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=str(repo),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)} failed: {result.stderr}")
+    return result.stdout
+
+
+def init_repo() -> Path:
+    """Create a throwaway git repo with a committer identity configured."""
+    tmp = Path(tempfile.mkdtemp())
+    git(tmp, "init", "-q")
+    git(tmp, "config", "user.email", "test@example.com")
+    git(tmp, "config", "user.name", "Test")
+    git(tmp, "config", "commit.gpgsign", "false")
+    git(tmp, "config", "tag.gpgsign", "false")
+    return tmp
+
+
+def commit(repo: Path, message: str) -> str:
+    (repo / "f.txt").write_text(message + "\n")
+    git(repo, "add", "f.txt")
+    git(repo, "commit", "-q", "-m", message)
+    return git(repo, "rev-parse", "--short", "HEAD").strip()
+
+
 class ParseSemverTests(unittest.TestCase):
     def test_valid(self):
         self.assertEqual(release.parse_semver("1.2.3"), (1, 2, 3))
-        self.assertEqual(release.parse_semver("v0.10.2".lstrip("v")), (0, 10, 2))
+        self.assertEqual(release.parse_semver("v0.10.2"), (0, 10, 2))
 
     def test_invalid(self):
-        for bad in ["1.2", "1.2.3.4", "x.y.z", "1.2-alpha", "", "v1.2.3"]:
+        for bad in ["1.2", "1.2.3.4", "x.y.z", "1.2-alpha", ""]:
             with self.assertRaises(ValueError, msg=bad):
                 release.parse_semver(bad)
 
@@ -77,42 +108,42 @@ class DetermineBumpTests(unittest.TestCase):
 
 class ParseCommitTests(unittest.TestCase):
     def test_feature(self):
-        commit = release.parse_commit("aa1bb2c", "feat: add release command", "")
-        assert commit is not None
-        self.assertEqual(commit["type"], "feat")
-        self.assertFalse(commit["breaking"])
-        self.assertEqual(commit["subject"], "add release command")
-        self.assertIsNone(commit["scope"])
+        parsed = release.parse_commit("aa1bb2c", "feat: add release command", "")
+        assert parsed is not None
+        self.assertEqual(parsed["type"], "feat")
+        self.assertFalse(parsed["breaking"])
+        self.assertEqual(parsed["subject"], "add release command")
+        self.assertIsNone(parsed["scope"])
 
     def test_scoped_fix(self):
-        commit = release.parse_commit("aa1bb2c", "fix(client): retry on timeout", "")
-        assert commit is not None
-        self.assertEqual(commit["type"], "fix")
-        self.assertEqual(commit["scope"], "client")
+        parsed = release.parse_commit("aa1bb2c", "fix(client): retry on timeout", "")
+        assert parsed is not None
+        self.assertEqual(parsed["type"], "fix")
+        self.assertEqual(parsed["scope"], "client")
 
     def test_bang_is_breaking(self):
-        commit = release.parse_commit("aa1bb2c", "feat!: drop old auth flag", "")
-        assert commit is not None
-        self.assertTrue(commit["breaking"])
+        parsed = release.parse_commit("aa1bb2c", "feat!: drop old auth flag", "")
+        assert parsed is not None
+        self.assertTrue(parsed["breaking"])
 
     def test_breaking_change_footer(self):
-        commit = release.parse_commit(
+        parsed = release.parse_commit(
             "aa1bb2c",
             "feat: change auth flow",
             "some body\n\nBREAKING CHANGE: PC_TOKEN is now required",
         )
-        assert commit is not None
-        self.assertTrue(commit["breaking"])
+        assert parsed is not None
+        self.assertTrue(parsed["breaking"])
 
     def test_non_conventional_returns_none(self):
         self.assertIsNone(release.parse_commit("aa1bb2c", "fix a typo", ""))
         self.assertIsNone(release.parse_commit("aa1bb2c", "initial commit", ""))
 
     def test_chore_is_parsed_but_not_changelog_worthy(self):
-        commit = release.parse_commit("aa1bb2c", "chore: bump deps", "")
-        assert commit is not None
-        self.assertEqual(commit["type"], "chore")
-        self.assertFalse(commit["breaking"])
+        parsed = release.parse_commit("aa1bb2c", "chore: bump deps", "")
+        assert parsed is not None
+        self.assertEqual(parsed["type"], "chore")
+        self.assertFalse(parsed["breaking"])
 
 
 class ChangelogEntryTests(unittest.TestCase):
@@ -139,10 +170,10 @@ class ChangelogEntryTests(unittest.TestCase):
         ]
         entry = release.render_changelog_entry("1.0.0", commits, "2026-09-02")
         breaking_pos = entry.index("### BREAKING CHANGES")
-        features_pos = entry.index("### Bug Fixes")
-        self.assertLess(breaking_pos, features_pos)
+        fixes_pos = entry.index("### Bug Fixes")
+        self.assertLess(breaking_pos, fixes_pos)
         self.assertIn("- drop flag (aaa1111)", entry)
-        # breaking 提交不在普通分组里重复出现
+        # breaking commits are not repeated in the regular groups
         self.assertNotIn("### Features", entry)
 
 
@@ -168,29 +199,66 @@ class ChangelogFileTests(unittest.TestCase):
             self.assertIn("- new", content)
 
 
-class CargoVersionTests(unittest.TestCase):
-    def test_update_cargo_toml(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            (repo / "Cargo.toml").write_text('[package]\nname = "pc"\nversion = "0.1.0"\n')
-            release.update_cargo_toml(repo, "0.2.0")
-            self.assertIn('version = "0.2.0"', (repo / "Cargo.toml").read_text())
+class GitIntegrationTests(unittest.TestCase):
+    def test_compute_auto_bump_from_commits(self):
+        repo = init_repo()
+        commit(repo, "feat: initial feature")
+        git(repo, "tag", "-a", "v0.1.0", "-m", "release v0.1.0")
+        commit(repo, "fix: patch a bug")
+        commit(repo, "chore: tidy up")
 
-    def test_update_cargo_lock(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            (repo / "Cargo.lock").write_text(
-                '[[package]]\nname = "pc"\nversion = "0.1.0"\n'
-                'dependencies = []\n\n[[package]]\nname = "other"\nversion = "0.1.0"\n'
-            )
-            release.update_cargo_lock(repo, "0.2.0")
-            content = (repo / "Cargo.lock").read_text()
-            self.assertIn('name = "pc"\nversion = "0.2.0"', content)
-            self.assertIn('name = "other"\nversion = "0.1.0"', content)
+        result = release.compute_next_version(repo, None)
+        self.assertEqual(result["current_version"], "0.1.0")
+        self.assertEqual(result["version"], "0.1.1")
+        self.assertEqual(result["bump"], "patch")
+        self.assertEqual(result["tag"], "v0.1.1")
 
-    def test_missing_cargo_lock_is_ok(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            release.update_cargo_lock(Path(tmp), "1.0.0")
+    def test_compute_0x_breaking_is_minor(self):
+        repo = init_repo()
+        commit(repo, "feat: initial feature")
+        git(repo, "tag", "-a", "v0.1.0", "-m", "release v0.1.0")
+        commit(repo, "feat!: rework auth")
+
+        result = release.compute_next_version(repo, None)
+        self.assertEqual(result["version"], "0.2.0")
+        self.assertEqual(result["bump"], "minor")
+
+    def test_compute_manual_version(self):
+        repo = init_repo()
+        commit(repo, "feat: initial feature")
+        git(repo, "tag", "-a", "v0.3.0", "-m", "release v0.3.0")
+        commit(repo, "fix: bug")
+
+        result = release.compute_next_version(repo, "1.0.0")
+        self.assertEqual(result["version"], "1.0.0")
+        self.assertEqual(result["bump"], "manual")
+
+    def test_compute_manual_version_must_be_greater(self):
+        repo = init_repo()
+        commit(repo, "feat: initial feature")
+        git(repo, "tag", "-a", "v0.3.0", "-m", "release v0.3.0")
+        with self.assertRaises(ValueError):
+            release.compute_next_version(repo, "0.3.0")
+
+    def test_compute_no_changes_raises(self):
+        repo = init_repo()
+        commit(repo, "feat: initial feature")
+        git(repo, "tag", "-a", "v0.1.0", "-m", "release v0.1.0")
+        commit(repo, "chore: just chores")
+        with self.assertRaises(ValueError):
+            release.compute_next_version(repo, None)
+
+    def test_collect_commits_after_tag(self):
+        repo = init_repo()
+        commit(repo, "feat: before tag")
+        git(repo, "tag", "-a", "v0.1.0", "-m", "release v0.1.0")
+        first = commit(repo, "feat: after tag one")
+        second = commit(repo, "fix: after tag two")
+
+        commits = release.collect_commits(repo, "v0.1.0")
+        subjects = [c["subject"] for c in commits]
+        self.assertEqual(subjects, ["after tag one", "after tag two"])
+        self.assertEqual([c["hash"] for c in commits], [first, second])
 
 
 if __name__ == "__main__":

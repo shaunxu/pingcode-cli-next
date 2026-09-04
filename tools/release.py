@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
-"""发布工具：根据 Conventional Commits 计算 Semver 版本号、生成 CHANGELOG.md、
-更新 Cargo.toml / Cargo.lock，提交并打 tag，推送到 origin；tag 推送后由
-.github/workflows/release.yml 交叉编译三平台二进制并创建 GitHub Release。
+"""Release helper for the `pc` CLI.
 
-纯标准库实现，无第三方依赖。用法：
+Two modes, driven by scripts/release.sh and cargo-release:
 
-    python3 tools/release.py --dry-run        # 仅预览版本号与 changelog 内容
-    python3 tools/release.py                  # 自动按 commits 确定版本并发布
-    python3 tools/release.py --version 0.2.0  # 手动指定版本
+1. ``compute`` (called by scripts/release.sh before cargo-release):
+   resolves the next SemVer version from Conventional Commits since the
+   latest tag (or from --version), validates it and prints a JSON preview.
+   scripts/release.sh then runs ``cargo release <version>`` which bumps
+   Cargo.toml/Cargo.lock, commits, tags and pushes.
+
+2. ``changelog`` (the cargo-release ``pre-release-hook``):
+   regenerates the CHANGELOG.md section for NEW_VERSION from the commits
+   between the PREV_VERSION tag and HEAD. Invoked with DRY_RUN by
+   cargo-release; when DRY_RUN=true it only prints the entry.
+
+Git operations (commit/tag/push) and version bumping are intentionally
+left to cargo-release; this script only computes versions and maintains
+CHANGELOG.md. Pure standard library, no third-party dependencies.
 """
 
 from __future__ import annotations
@@ -15,6 +24,7 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import os
 import re
 import subprocess
 import sys
@@ -22,7 +32,8 @@ from pathlib import Path
 
 TAG_PREFIX = "v"
 
-# 进入 CHANGELOG 的 Conventional Commit 类型（仅用户可见变更）及其分组标题。
+# Conventional Commit types that go into the user-facing changelog, with
+# their Keep a Changelog section headings.
 CHANGELOG_GROUPS = [
     ("feat", "Features"),
     ("fix", "Bug Fixes"),
@@ -30,18 +41,13 @@ CHANGELOG_GROUPS = [
 ]
 
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
-CARGO_VERSION_RE = re.compile(r'^version\s*=\s*"(\d+\.\d+\.\d+)"\s*$', re.MULTILINE)
-# Cargo.lock 中本 crate 所在段落：name = "pc" 之后紧跟 version = "..."
-CARGO_LOCK_VERSION_RE = re.compile(
-    r'(name\s*=\s*"pc"\s*\nversion\s*=\s*")(\d+\.\d+\.\d+)(")'
-)
 COMMIT_RE = re.compile(
     r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]*)\))?(?P<bang>!)?:\s*(?P<subject>.+)$"
 )
 
 
-def run_git(args: list[str], cwd: Path | None = None, capture: bool = True) -> str:
-    """执行 git 命令；失败时把 stderr 包成 RuntimeError 抛出。"""
+def run_git(args: list[str], cwd: Path | None = None) -> str:
+    """Run a git command, raising RuntimeError on failure."""
     result = subprocess.run(
         ["git", *args],
         cwd=str(cwd) if cwd else None,
@@ -53,21 +59,85 @@ def run_git(args: list[str], cwd: Path | None = None, capture: bool = True) -> s
     return result.stdout
 
 
+def find_repo_root() -> Path:
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("not inside a git repository; run this tool from the project repo")
+    return Path(result.stdout.strip())
+
+
 def parse_semver(version: str) -> tuple[int, int, int]:
-    match = SEMVER_RE.match(version.strip())
+    match = SEMVER_RE.match(version.strip().lstrip(TAG_PREFIX))
     if not match:
         raise ValueError(f"invalid semver version: {version!r} (expected MAJOR.MINOR.PATCH)")
-    return tuple(int(g) for g in match.groups())  # type: ignore[return-value]
+    return tuple(int(group) for group in match.groups())  # type: ignore[return-value]
 
 
 def format_semver(version: tuple[int, int, int]) -> str:
     return f"{version[0]}.{version[1]}.{version[2]}"
 
 
-def determine_bump(commits: list[dict]) -> str:
-    """根据 commits 判定版本提升级别：major > minor > patch。
+def parse_commit(hash_: str, subject: str, body: str) -> dict | None:
+    """Parse one commit subject; return None when it is not Conventional Commits."""
+    match = COMMIT_RE.match(subject.strip())
+    if not match:
+        return None
+    breaking = bool(match.group("bang")) or "BREAKING CHANGE:" in body
+    return {
+        "hash": hash_,
+        "type": match.group("type"),
+        "scope": match.group("scope"),
+        "subject": match.group("subject").strip(),
+        "breaking": breaking,
+    }
 
-    0.x 阶段由调用方单独处理（major 降级为 minor）。
+
+def collect_commits(repo: Path, baseline_tag: str | None) -> list[dict]:
+    """Collect parsed commits after baseline_tag (all history when no tag),
+    in chronological order."""
+    rev = f"{baseline_tag}..HEAD" if baseline_tag else "HEAD"
+    sep = "\x1e"
+    log = run_git(["log", rev, f"--pretty=format:%h%x1f%s%x1f%b{sep}"], cwd=repo)
+    commits = []
+    for record in log.split(sep):
+        record = record.strip("\n")
+        if not record:
+            continue
+        fields = record.split("\x1f")
+        if len(fields) < 3:
+            continue
+        parsed = parse_commit(fields[0], fields[1], fields[2])
+        if parsed:
+            commits.append(parsed)
+    commits.reverse()  # git log is newest-first; flip to chronological order
+    return commits
+
+
+def latest_tag(repo: Path) -> str | None:
+    """Return the most recent annotated/lightweight tag reachable from HEAD."""
+    result = subprocess.run(
+        ["git", "describe", "--tags", "--abbrev=0"],
+        cwd=str(repo),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def tag_for_version(version: str) -> str:
+    return f"{TAG_PREFIX}{version}"
+
+
+def determine_bump(commits: list[dict]) -> str:
+    """Decide the bump level from commits: major > minor > patch.
+
+    Callers handle the 0.x rule (breaking never leaves 0.x as major).
     """
     bump = None
     for commit in commits:
@@ -87,10 +157,9 @@ def determine_bump(commits: list[dict]) -> str:
 
 def bump_version(current: str, bump: str) -> str:
     major, minor, patch = parse_semver(current)
-    # 0.x 阶段：不发布 major，breaking change 只升 minor。
-    if major == 0:
-        if bump == "major":
-            bump = "minor"
+    # Pre-1.0: never publish a major bump; breaking changes bump minor.
+    if major == 0 and bump == "major":
+        bump = "minor"
     if bump == "major":
         return format_semver((major + 1, 0, 0))
     if bump == "minor":
@@ -100,78 +169,11 @@ def bump_version(current: str, bump: str) -> str:
     raise ValueError(f"unknown bump level: {bump!r}")
 
 
-def parse_commit(hash_: str, subject: str, body: str) -> dict | None:
-    """解析单行 commit message；不符合 Conventional Commits 的提交返回 None。"""
-    match = COMMIT_RE.match(subject.strip())
-    if not match:
-        return None
-    breaking = bool(match.group("bang")) or "BREAKING CHANGE:" in body
-    return {
-        "hash": hash_,
-        "type": match.group("type"),
-        "scope": match.group("scope"),
-        "subject": match.group("subject").strip(),
-        "breaking": breaking,
-    }
-
-
-def collect_commits(repo: Path, baseline_tag: str | None) -> list[dict]:
-    """收集基线 tag 之后（无 tag 则全部历史）的提交并按时间正序返回。"""
-    rev = f"{baseline_tag}..HEAD" if baseline_tag else "HEAD"
-    sep = "\x1e"
-    log = run_git(
-        ["log", rev, f"--pretty=format:%h%x1f%s%x1f%b{sep}"], cwd=repo
-    )
-    commits = []
-    for record in log.split(sep):
-        record = record.strip("\n")
-        if not record:
-            continue
-        fields = record.split("\x1f")
-        if len(fields) < 3:
-            continue
-        parsed = parse_commit(fields[0], fields[1], fields[2])
-        if parsed:
-            commits.append(parsed)
-    commits.reverse()  # git log 为新到旧，翻转为时间正序
-    return commits
-
-
-def latest_tag(repo: Path) -> str | None:
-    result = subprocess.run(
-        ["git", "describe", "--tags", "--abbrev=0"],
-        cwd=str(repo),
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip()
-
-
-def tag_version(tag: str | None) -> str | None:
-    if not tag:
-        return None
-    return tag[len(TAG_PREFIX) :] if tag.startswith(TAG_PREFIX) else tag
-
-
-def current_version(repo: Path) -> str:
-    tag = latest_tag(repo)
-    version = tag_version(tag)
-    if version:
-        return version
-    cargo_toml = (repo / "Cargo.toml").read_text()
-    match = CARGO_VERSION_RE.search(cargo_toml)
-    if not match:
-        raise RuntimeError("cannot find version in Cargo.toml")
-    return match.group(1)
-
-
 def render_changelog_entry(version: str, commits: list[dict], date: str) -> str:
-    """渲染 Keep a Changelog 格式的单个版本条目。"""
-    lines = [f"## [{TAG_PREFIX}{version}] - {date}", ""]
+    """Render one Keep a Changelog style release section."""
+    lines = [f"## [{tag_for_version(version)}] - {date}", ""]
 
-    breaking = [c for c in commits if c["breaking"]]
+    breaking = [commit for commit in commits if commit["breaking"]]
     if breaking:
         lines.append("### BREAKING CHANGES")
         lines.append("")
@@ -180,7 +182,11 @@ def render_changelog_entry(version: str, commits: list[dict], date: str) -> str:
         lines.append("")
 
     for commit_type, heading in CHANGELOG_GROUPS:
-        group = [c for c in commits if not c["breaking"] and c["type"] == commit_type]
+        group = [
+            commit
+            for commit in commits
+            if not commit["breaking"] and commit["type"] == commit_type
+        ]
         if not group:
             continue
         lines.append(f"### {heading}")
@@ -193,7 +199,7 @@ def render_changelog_entry(version: str, commits: list[dict], date: str) -> str:
 
 
 def upsert_changelog(repo: Path, entry: str) -> None:
-    """把新版本条目插入 CHANGELOG.md 顶部；文件不存在则新建。"""
+    """Insert a new release section at the top of CHANGELOG.md (create if absent)."""
     path = repo / "CHANGELOG.md"
     if not path.exists():
         path.write_text(f"# Changelog\n\n{entry}")
@@ -208,141 +214,127 @@ def upsert_changelog(repo: Path, entry: str) -> None:
             while insert_at < len(lines) and lines[insert_at].strip() == "":
                 insert_at += 1
             break
-    new_lines = lines[:insert_at] + ["\n", entry, "\n"] + lines[insert_at:]
-    path.write_text("".join(new_lines))
+    path.write_text("".join(lines[:insert_at] + ["\n", entry, "\n"] + lines[insert_at:]))
 
 
-def update_cargo_toml(repo: Path, new_version: str) -> None:
-    path = repo / "Cargo.toml"
-    content = path.read_text()
-    updated, count = CARGO_VERSION_RE.subn(f'version = "{new_version}"', content, count=1)
-    if count != 1:
-        raise RuntimeError("cannot find version in Cargo.toml")
-    path.write_text(updated)
+def today() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
 
 
-def update_cargo_lock(repo: Path, new_version: str) -> None:
-    path = repo / "Cargo.lock"
-    if not path.exists():
-        return
-    content = path.read_text()
-    updated, count = CARGO_LOCK_VERSION_RE.subn(rf"\g<1>{new_version}\g<3>", content, count=1)
-    if count != 1:
-        raise RuntimeError('cannot find package "pc" in Cargo.lock')
-    path.write_text(updated)
-
-
-def find_repo_root() -> Path:
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError("not inside a git repository; run this tool from the project repo")
-    return Path(result.stdout.strip())
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Release the pc CLI: bump version, update CHANGELOG.md, commit, tag and push."
-    )
-    parser.add_argument(
-        "--version",
-        dest="version",
-        help="version to release (MAJOR.MINOR.PATCH); defaults to bumping from commits",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print the resolved version and changelog entry without touching files or git",
-    )
-    args = parser.parse_args()
-
-    repo = find_repo_root()
+def compute_next_version(repo: Path, manual: str | None) -> dict:
+    """Resolve current version, commits since the last tag and the next version."""
     baseline_tag = latest_tag(repo)
-    version_str = current_version(repo)
-    current = parse_semver(version_str)
+    current_version = (
+        baseline_tag[len(TAG_PREFIX) :]
+        if baseline_tag and baseline_tag.startswith(TAG_PREFIX)
+        else baseline_tag
+    )
     commits = collect_commits(repo, baseline_tag)
 
-    if args.version:
-        new_version = format_semver(parse_semver(args.version))
-        if parse_semver(new_version) <= current:
+    if manual:
+        new_version = format_semver(parse_semver(manual))
+        if current_version and parse_semver(new_version) <= parse_semver(current_version):
             raise ValueError(
-                f"--version {new_version} must be greater than the current version {version_str}"
+                f"--version {new_version} must be greater than the current version "
+                f"{current_version}"
             )
         bump = "manual"
     else:
         bump = determine_bump(commits)
-        # 0.x 阶段 breaking change 只升 minor，展示实际提升级别。
-        if current[0] == 0 and bump == "major":
+        if not current_version:
+            raise RuntimeError(
+                "no git tag found and no --version given; use --version X.Y.Z for the "
+                "first release"
+            )
+        new_version = bump_version(current_version, bump)
+        # Report the effective bump level for 0.x breaking changes.
+        if parse_semver(current_version)[0] == 0 and bump == "major":
             bump = "minor"
-        new_version = bump_version(version_str, bump)
 
-    date = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
-    tag = f"{TAG_PREFIX}{new_version}"
-    changelog_entry = render_changelog_entry(new_version, commits, date)
+    return {
+        "current_version": current_version,
+        "baseline_tag": baseline_tag,
+        "version": new_version,
+        "tag": tag_for_version(new_version),
+        "bump": bump,
+        "commits": commits,
+    }
 
-    if args.dry_run:
-        preview = {
-            "version": new_version,
-            "tag": tag,
-            "baseline": baseline_tag,
-            "current_version": version_str,
-            "bump": bump,
-            "commits": commits,
-            "changelog_entry": changelog_entry,
-            "actions": [
-                "update Cargo.toml version",
-                "update Cargo.lock version (if present)",
-                "write CHANGELOG.md",
-                f"git add Cargo.toml Cargo.lock CHANGELOG.md",
-                f"git commit -m 'chore(release): {tag}'",
-                f"git tag -a {tag} -m '<changelog entry>'",
-                f"git push origin <current branch>",
-                f"git push origin {tag}",
-            ],
-        }
-        print(json.dumps(preview, indent=2, ensure_ascii=False))
+
+def cmd_compute(args: argparse.Namespace) -> int:
+    repo = find_repo_root()
+    result = compute_next_version(repo, args.version)
+    preview = {
+        **result,
+        "date": today(),
+        "actions": [
+            "cargo release bumps Cargo.toml/Cargo.lock",
+            "pre-release-hook regenerates CHANGELOG.md",
+            f"git commit -m 'chore(release): {result['tag']}'",
+            f"git tag {result['tag']} (annotated)",
+            "git push origin <branch> and tag",
+            "cargo-dist CI builds linux/macos/windows, creates the GitHub release, "
+            "publishes shell/PowerShell installers and the Homebrew formula",
+        ],
+    }
+    print(json.dumps(preview, indent=2, ensure_ascii=False))
+    return 0
+
+
+def cmd_changelog(_args: argparse.Namespace) -> int:
+    """cargo-release pre-release-hook entry point.
+
+    Reads NEW_VERSION / PREV_VERSION / DRY_RUN from the environment that
+    cargo-release provides to hooks.
+    """
+    new_version = os.environ.get("NEW_VERSION")
+    if not new_version:
+        raise RuntimeError("NEW_VERSION is not set; this command is meant to run as a "
+                           "cargo-release pre-release-hook")
+    prev_version = os.environ.get("PREV_VERSION") or None
+    dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
+    repo = Path(os.environ.get("WORKSPACE_ROOT") or os.environ.get("CRATE_ROOT") or find_repo_root())
+
+    baseline_tag = tag_for_version(prev_version) if prev_version else latest_tag(repo)
+    commits = collect_commits(repo, baseline_tag)
+    entry = render_changelog_entry(new_version, commits, today())
+
+    if dry_run:
+        print(f"[release.py dry-run] would write this CHANGELOG.md section:\n{entry}")
         return 0
 
-    # 真实发布前的前置校验。
-    if run_git(["status", "--porcelain"], cwd=repo).strip():
-        raise RuntimeError("working tree is not clean; commit or stash changes before releasing")
-    branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo).strip()
-    if branch == "HEAD":
-        raise RuntimeError("detached HEAD; check out a branch before releasing")
-    existing = run_git(["tag", "--list", tag], cwd=repo).strip()
-    if existing:
-        raise RuntimeError(f"tag {tag} already exists")
-
-    update_cargo_toml(repo, new_version)
-    update_cargo_lock(repo, new_version)
-    upsert_changelog(repo, changelog_entry)
-
-    run_git(["add", "Cargo.toml", "Cargo.lock", "CHANGELOG.md"], cwd=repo)
-    run_git(["commit", "-m", f"chore(release): {tag}"], cwd=repo)
-    run_git(["tag", "-a", tag, "-m", changelog_entry], cwd=repo)
-    run_git(["push", "origin", branch], cwd=repo)
-    run_git(["push", "origin", tag], cwd=repo)
-
-    print(
-        json.dumps(
-            {
-                "version": new_version,
-                "tag": tag,
-                "branch": branch,
-                "commits_included": len(commits),
-                "pushed": True,
-            },
-            indent=2,
-        )
-    )
-    print(
-        f"Tag {tag} pushed; the release workflow will build binaries and create the GitHub release.",
-        file=sys.stderr,
-    )
+    upsert_changelog(repo, entry)
+    print(f"[release.py] CHANGELOG.md updated for {tag_for_version(new_version)}")
     return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Compute the next release version and maintain CHANGELOG.md for pc."
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    compute = sub.add_parser(
+        "compute",
+        help="resolve the next version from Conventional Commits (or --version)",
+    )
+    compute.add_argument(
+        "--version",
+        help="version to release (MAJOR.MINOR.PATCH); defaults to bumping from commits",
+    )
+    compute.set_defaults(func=cmd_compute)
+
+    changelog = sub.add_parser(
+        "changelog",
+        help="regenerate the CHANGELOG.md section (cargo-release pre-release-hook)",
+    )
+    changelog.set_defaults(func=cmd_changelog)
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    return args.func(args)
 
 
 if __name__ == "__main__":

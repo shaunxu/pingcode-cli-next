@@ -31,7 +31,7 @@
 
 ## 发布（维护者）
 
-发布是**项目级工具**，不是 `pc` 的子命令（类似 `npm run release`），用 `scripts/release.sh` 触发：
+发布是**项目级工具**，不是 `pc` 的子命令（类似 `npm run release`），用 `scripts/release.sh` 触发（本地需先 `cargo install cargo-release cargo-dist`）：
 
 ```bash
 ./scripts/release.sh --dry-run        # 仅预览新版本号与 CHANGELOG 条目，零副作用（输出 JSON）
@@ -39,9 +39,12 @@
 ./scripts/release.sh --version 0.2.0  # 手动指定版本号
 ```
 
-- 发布工具是 `tools/release.py`（纯 Python 3 标准库，与 `tools/search_nexus_docs.py` 同风格，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`），不属于构建流程。
-- 流程：取最近 git tag（无 tag 则以 `Cargo.toml` 版本为基线）→ 解析基线后的 commits 定版本（0.x 阶段 feat→minor、fix/perf→patch、BREAKING→minor；1.0+ 按标准 Semver）→ 生成/更新 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）→ 更新 `Cargo.toml` 与 `Cargo.lock` 中 `pc` 的版本 → commit `chore(release): vX.Y.Z` → annotated tag `vX.Y.Z`（message 为 changelog 条目）→ push 分支与 tag。
-- tag 推送触发 `.github/workflows/release.yml`：在 ubuntu/macos/windows 上原生编译，产物以友好名打包（`pc-vX.Y.Z-linux-x86_64.tar.gz`、`pc-vX.Y.Z-macos-arm64.tar.gz`、`pc-vX.Y.Z-windows-x86_64.zip`），并用 `gh release create` 创建 GitHub Release、上传附件（正文取 tag annotation）。
+- 发版工具链分三层：
+  - `tools/release.py`（纯 Python 3 标准库，与 `tools/search_nexus_docs.py` 同风格，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`）：`compute` 子命令取最近 git tag、解析基线后的 commits 定版本（0.x 阶段 feat/BREAKING→minor、fix/perf→patch；1.0+ 按标准 Semver），支持 `--version` 手动指定与 `--dry-run` 预览；`changelog` 子命令是 cargo-release 的 pre-release-hook，依据 `PREV_VERSION..HEAD` 的提交重写 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）。
+  - [cargo-release](https://github.com/crate-ci/cargo-release)（配置在根目录 `release.toml`）：`publish = false`（不上 crates.io）、bump `Cargo.toml`/`Cargo.lock`、运行 changelog hook、commit `chore(release): vX.Y.Z`、打 annotated tag `vX.Y.Z`、push。**不要设 `tag-prefix = "v"`**：默认 tag-name 是 `{{prefix}}v{{version}}`，根 crate prefix 为空，设了会得到 `vvX.Y.Z`。
+  - [cargo-dist](https://github.com/axodotdev/cargo-dist)（配置在根目录 `dist-workspace.toml`，workflow 由 `dist generate` 生成到 `.github/workflows/release.yml`，**不要手改该文件**）：tag 推送后在三平台（`x86_64-unknown-linux-gnu`、`aarch64-apple-darwin`、`x86_64-pc-windows-msvc`）编译，产物为 `.tar.xz`/`.zip` + `.sha256`，创建 GitHub Release、发布 `pc-installer.sh`/`pc-installer.ps1` 一键安装脚本，并把 Homebrew formula 推送到独立 tap 仓库 `shaunxu/homebrew-tap`（用 secret `HOMEBREW_TAP_TOKEN`；`tap`/`publish-jobs` 配在 `dist-workspace.toml`）。
+- 改了 `dist-workspace.toml` 后必须运行 `dist generate` 重新生成 workflow。
+- 用户安装方式见 README「安装」：shell/PowerShell 一键脚本、`brew tap shaunxu/tap && brew install pc`、或直接下载 Release 资产。
 
 ## 代码约定
 
