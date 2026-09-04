@@ -10,6 +10,7 @@ pub mod context;
 pub mod dynamic;
 pub mod organization;
 pub mod pjm;
+pub mod security;
 pub mod ship;
 pub mod testhub;
 pub mod wiki;
@@ -47,6 +48,11 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Wiki {
             command: wiki_command,
         } => wiki::run(&ctx, wiki_command).await,
+
+        // 三级命令：module -> resource -> operation
+        Command::Security {
+            command: security_command,
+        } => security::run(&ctx, security_command).await,
 
         // 自由命令：不遵循 module/resource/operation 模式
         Command::State => dynamic::state::run(&ctx).await,

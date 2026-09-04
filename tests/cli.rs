@@ -2,6 +2,7 @@ mod common;
 mod dynamic;
 mod organization;
 mod pjm;
+mod security;
 mod ship;
 mod testhub;
 mod wiki;
