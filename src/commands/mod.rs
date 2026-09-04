@@ -6,6 +6,7 @@
 //! - **自由命令**：不遵循三级模式的命令（如 `state`），
 //!   放在 `dynamic/` 下，每个命令一个文件，直接在本文件的 match 中分发。
 
+pub mod comments;
 pub mod context;
 pub mod dynamic;
 pub mod organization;
@@ -65,6 +66,11 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::WorkloadType {
             command: workload_type_command,
         } => workload_type::run(&ctx, workload_type_command).await,
+
+        // 跨模块全局资源：评论直接挂在顶层（pc comments <operation>）
+        Command::Comments {
+            command: comments_command,
+        } => comments::run(&ctx, comments_command).await,
 
         // 自由命令：不遵循 module/resource/operation 模式
         Command::State => dynamic::state::run(&ctx).await,
