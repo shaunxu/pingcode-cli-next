@@ -4,6 +4,25 @@
 
 
 
+
+## [v0.4.0] - 2026-09-04
+
+### Features
+
+- add workitem commands and related resources (995c647)
+- add release commands (27eb538)
+- add configuration center commands (d9c6b10)
+- add product management commands (7505f54)
+- add ticket management commands (8b6a813)
+- add idea (feedback requirement) commands (b4b90cb)
+- add test management commands (42835c7)
+- add knowledge management commands (802c73a)
+- add organization (directory) commands (0b2b617)
+- add login log and audit log list commands (46747fe)
+- add workload and workload-type commands (122ce4d)
+- add comments list command (6932e4a)
+- add common global resource commands (80a8a8c)
+
 ## [v0.3.0] - 2026-09-02
 
 ### Features
