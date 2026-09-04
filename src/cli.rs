@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{organization, pjm, security, ship, testhub, wiki};
+use crate::commands::{organization, pjm, security, ship, testhub, wiki, workload, workload_type};
 
 /// PingCode Open API command line client
 #[derive(Debug, Parser)]
@@ -65,6 +65,16 @@ pub enum Command {
     Security {
         #[command(subcommand)]
         command: security::SecurityCommand,
+    },
+    /// Workloads: time logged against work items, ideas, tickets and test cases
+    Workload {
+        #[command(subcommand)]
+        command: workload::WorkloadCommand,
+    },
+    /// Workload types available when logging work
+    WorkloadType {
+        #[command(subcommand)]
+        command: workload_type::WorkloadTypeCommand,
     },
     /// Show authentication status along with the current team (enterprise) and user info
     State,

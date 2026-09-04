@@ -14,6 +14,8 @@ pub mod security;
 pub mod ship;
 pub mod testhub;
 pub mod wiki;
+pub mod workload;
+pub mod workload_type;
 
 use context::Ctx;
 
@@ -53,6 +55,16 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Security {
             command: security_command,
         } => security::run(&ctx, security_command).await,
+
+        // 跨模块全局资源：工时直接挂在顶层（pc workload <operation>）
+        Command::Workload {
+            command: workload_command,
+        } => workload::run(&ctx, workload_command).await,
+
+        // 跨模块全局资源：工时类型直接挂在顶层（pc workload-type <operation>）
+        Command::WorkloadType {
+            command: workload_type_command,
+        } => workload_type::run(&ctx, workload_type_command).await,
 
         // 自由命令：不遵循 module/resource/operation 模式
         Command::State => dynamic::state::run(&ctx).await,
