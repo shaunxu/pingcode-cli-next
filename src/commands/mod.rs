@@ -6,11 +6,16 @@
 //! - **自由命令**：不遵循三级模式的命令（如 `state`），
 //!   放在 `dynamic/` 下，每个命令一个文件，直接在本文件的 match 中分发。
 
+pub mod activities;
+pub mod attachments;
 pub mod comments;
 pub mod context;
 pub mod dynamic;
 pub mod organization;
+pub mod participants;
 pub mod pjm;
+pub mod relations;
+pub mod reviews;
 pub mod security;
 pub mod ship;
 pub mod testhub;
@@ -71,6 +76,31 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Comments {
             command: comments_command,
         } => comments::run(&ctx, comments_command).await,
+
+        // 跨模块全局资源：附件直接挂在顶层（pc attachments <operation>）
+        Command::Attachments {
+            command: attachments_command,
+        } => attachments::run(&ctx, attachments_command).await,
+
+        // 跨模块全局资源：关注人直接挂在顶层（pc participants <operation>）
+        Command::Participants {
+            command: participants_command,
+        } => participants::run(&ctx, participants_command).await,
+
+        // 跨模块全局资源：关联直接挂在顶层（pc relations <operation>）
+        Command::Relations {
+            command: relations_command,
+        } => relations::run(&ctx, relations_command).await,
+
+        // 跨模块全局资源：活动记录直接挂在顶层（pc activities <operation>）
+        Command::Activities {
+            command: activities_command,
+        } => activities::run(&ctx, activities_command).await,
+
+        // 跨模块全局资源：评审直接挂在顶层（pc reviews <operation>）
+        Command::Reviews {
+            command: reviews_command,
+        } => reviews::run(&ctx, reviews_command).await,
 
         // 自由命令：不遵循 module/resource/operation 模式
         Command::State => dynamic::state::run(&ctx).await,

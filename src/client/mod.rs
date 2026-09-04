@@ -23,6 +23,19 @@ pub struct TokenResponse {
     pub access_token: String,
 }
 
+/// multipart/form-data 表单字段：文本值或文件。
+#[derive(Debug, Clone)]
+pub enum MultipartField<'a> {
+    /// 普通文本字段（字段名, 值）。
+    Text(&'a str, &'a str),
+    /// 文件字段（字段名, 文件名, 字节内容）。
+    File {
+        name: &'a str,
+        file_name: &'a str,
+        bytes: &'a [u8],
+    },
+}
+
 /// `/v1/directory/team` 响应（企业信息）
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Team {
@@ -139,12 +152,67 @@ impl PingCodeClient {
     }
 
     /// 对 `{base_url}{path}` 发起 DELETE 请求。
-    ///
-    /// 框架方法：供后续新增的三级操作使用，当前尚无调用方。
-    #[allow(dead_code)]
     pub async fn delete<T: DeserializeOwned>(&self, path: &str) -> Result<T, ClientError> {
         self.request(reqwest::Method::DELETE, path, None, None)
             .await
+    }
+
+    /// 对 `{base_url}{path}` 发起带查询参数的 DELETE 请求。
+    ///
+    /// 通用资源（附件、关注人、评审等）的删除端点要求把 `principal_type` 等
+    /// 定位信息放在查询字符串上，故与无查询参数的 [`delete`](Self::delete) 区分。
+    pub async fn delete_with_query<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &Value,
+    ) -> Result<T, ClientError> {
+        self.request(reqwest::Method::DELETE, path, Some(query), None)
+            .await
+    }
+
+    /// 对 `{base_url}{path}` 发起 `multipart/form-data` POST 请求（文件上传）。
+    ///
+    /// `query` 为查询参数（如附件上传的 `principal_type`/`principal_id`）；
+    /// `fields` 为 multipart 表单字段（文本或文件）；
+    /// `dry_run_preview` 是 dry-run 时用于预览的 JSON 摘要（不发网络、不读文件）。
+    pub async fn post_multipart<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &Value,
+        fields: &[MultipartField<'_>],
+        dry_run_preview: &Value,
+    ) -> Result<T, ClientError> {
+        let query_string = encode_query(query);
+        let url = match &query_string {
+            Some(qs) => format!("{}{}?{}", self.base_url, path, qs),
+            None => format!("{}{}", self.base_url, path),
+        };
+
+        if self.dry_run {
+            let _ = output::print_dry_run("POST", &url, Some(dry_run_preview));
+            return Ok(serde_json::from_value(Value::Null)?);
+        }
+
+        let mut multipart = reqwest::multipart::Form::new();
+        for field in fields {
+            match field {
+                MultipartField::Text(name, value) => {
+                    multipart = multipart.text((*name).to_string(), (*value).to_string());
+                }
+                MultipartField::File {
+                    name,
+                    file_name,
+                    bytes,
+                } => {
+                    let part = reqwest::multipart::Part::bytes(bytes.to_vec())
+                        .file_name((*file_name).to_string());
+                    multipart = multipart.part((*name).to_string(), part);
+                }
+            }
+        }
+
+        let resp = self.http.post(&url).multipart(multipart).send().await?;
+        handle(resp).await
     }
 
     /// 对 `{base_url}{path}` 发起带 JSON 请求体的 DELETE 请求。

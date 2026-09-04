@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    comments, organization, pjm, security, ship, testhub, wiki, workload, workload_type,
+    activities, attachments, comments, organization, participants, pjm, relations, reviews,
+    security, ship, testhub, wiki, workload, workload_type,
 };
 
 /// PingCode Open API command line client
@@ -82,6 +83,31 @@ pub enum Command {
     Comments {
         #[command(subcommand)]
         command: comments::CommentsCommand,
+    },
+    /// Attachments (files and code snippets) on work items, test cases, ideas, tickets, wiki pages and more
+    Attachments {
+        #[command(subcommand)]
+        command: attachments::AttachmentsCommand,
+    },
+    /// Participants (watchers, users or teams) on work items, test cases, ideas, tickets, wiki pages and more
+    Participants {
+        #[command(subcommand)]
+        command: participants::ParticipantsCommand,
+    },
+    /// Cross-module relations between principals such as ideas and tickets
+    Relations {
+        #[command(subcommand)]
+        command: relations::RelationsCommand,
+    },
+    /// Read-only activity records (operation history) of work items, test cases, ideas and tickets
+    Activities {
+        #[command(subcommand)]
+        command: activities::ActivitiesCommand,
+    },
+    /// Reviews of work items, test cases and ideas, along with the reviewed principals
+    Reviews {
+        #[command(subcommand)]
+        command: reviews::ReviewsCommand,
     },
     /// Show authentication status along with the current team (enterprise) and user info
     State,
