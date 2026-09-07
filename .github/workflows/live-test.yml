@@ -1,0 +1,23 @@
+# Reusable workflow invoked by the cargo-dist release workflow (plan-jobs).
+# Runs the live end-to-end test journeys against the real PingCode Open API
+# before any release artifacts are built or published. Secrets are passed via
+# `secrets: inherit` from the caller; PC_OPEN_API_BASE_URL is a repo variable.
+name: Live test gate
+on:
+  workflow_call:
+
+jobs:
+  live-test:
+    # Only run on release tag pushes; skip on pull requests.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run live tests
+        env:
+          PC_CLIENT_ID: ${{ secrets.PC_CLIENT_ID }}
+          PC_CLIENT_SECRET: ${{ secrets.PC_CLIENT_SECRET }}
+          PC_OPEN_API_BASE_URL: ${{ vars.PC_OPEN_API_BASE_URL }}
+        run: ./scripts/live-test.sh

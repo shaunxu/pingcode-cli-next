@@ -19,5 +19,8 @@ hosting = "github"
 tap = "shaunxu/homebrew-tap"
 # Publish jobs to run in CI
 publish-jobs = ["homebrew"]
+# Pre-build gate: reusable workflow .github/workflows/live-test.yml runs the
+# end-to-end live test journey before any artifacts are built/released.
+plan-jobs = ["./live-test"]
 # Whether to install an updater program
 install-updater = false
