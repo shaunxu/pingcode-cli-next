@@ -1,11 +1,20 @@
+#[path = "offline/common/mod.rs"]
 mod common;
+#[path = "offline/dynamic/mod.rs"]
 mod dynamic;
+#[path = "offline/global/mod.rs"]
 mod global;
+#[path = "offline/organization/mod.rs"]
 mod organization;
+#[path = "offline/pjm/mod.rs"]
 mod pjm;
+#[path = "offline/security/mod.rs"]
 mod security;
+#[path = "offline/ship/mod.rs"]
 mod ship;
+#[path = "offline/testhub/mod.rs"]
 mod testhub;
+#[path = "offline/wiki/mod.rs"]
 mod wiki;
 
 use common::pc;

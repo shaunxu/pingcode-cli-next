@@ -66,7 +66,9 @@
 - `src/commands/context.rs` — `Ctx { client, config }`，所有命令的执行上下文，命令签名统一为 `async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`。
 - `src/commands/dynamic/` — 自由命令（`state.rs` 以 JSON 展示认证状态/企业/用户信息，支持 `--dry-run`）。
 - `src/commands/pjm/` — 三级命令样板：`pjm/mod.rs` 定义模块枚举 `PjmCommand`（资源变体用 struct variant + `#[command(subcommand)]`）；`pjm/workitem/mod.rs` 定义资源枚举 `WorkitemCommand`（操作变体持有 `clap::Args` 参数结构体）；`pjm/workitem/create.rs` 是操作样板：`--data` → `POST /v1/pjm/workitems`。
-- `tests/` — assert_cmd 集成测试（全部离线；dry-run 用例无凭据运行）。crate 根为 `tests/cli.rs`（应用级测试 + 模块声明），公共 helper `pc()` 在 `tests/common/mod.rs`；测试按命令模块分目录组织，粒度到资源一级（同一资源的所有操作测试放同一文件）：`tests/dynamic/state.rs` 对应自由命令 `state`，`tests/pjm/<resource>.rs`（如 `pjm/workitem.rs`、`pjm/project.rs`）对应三级命令资源，文件间用 `mod` 声明串联。
+- `tests/` — assert_cmd 黑盒集成测试，分两个独立 test binary：
+  - **离线测试** `tests/offline.rs`（入口）+ `tests/offline/`：全部离线，dry-run/help/参数校验用例无凭据运行。入口用 `#[path = "offline/<dir>/mod.rs"] mod ...;` 桥接到子目录（cargo 只把 `tests/` 下一层文件当 test binary）。公共 helper `pc()` 在 `tests/offline/common/mod.rs`；测试按命令模块分目录组织，粒度到资源一级（同一资源的所有操作测试放同一文件）：`offline/dynamic/state.rs` 对应自由命令 `state`，`offline/pjm/<resource>.rs`（如 `pjm/workitem.rs`、`pjm/project.rs`）对应三级命令资源。
+  - **Live 测试** `tests/live.rs`（入口）+ `tests/live/`：对真实 PingCode Open API 发请求的端到端旅程测试，默认全部跳过（门控见下方「Live 测试」）。harness 在 `tests/live/common.rs`，旅程在 `tests/live/journeys/`（一个业务链路一个 `#[test]`）。
 
 **新增三级命令**（module/resource/operation）：
 1. 资源目录下新建操作文件，如 `src/commands/pjm/workitem/create.rs`：`#[derive(Args)]` 参数结构体 + `pub async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`，写操作用 `output::read_data`/`ensure_object` 解析 `--data`，用 `ctx.client.<method>(path, ...)` 发请求，响应用 `output::print_json` 透传；
@@ -78,12 +80,26 @@
 
 ## 测试注意事项
 
-- 现有测试全部离线，不打真实 API。`tests/common/mod.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PC_TOKEN` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_OPEN_API_BASE_URL`，避免宿主环境污染断言——新增 CLI 测试沿用该模式：测试文件头部 `use crate::common::pc;`，按所属资源放进 `tests/pjm/<resource>.rs`（新资源需在 `tests/pjm/mod.rs` 加 `mod` 声明），自由命令放进 `tests/dynamic/`。
-- 目前没有 mock server 或测试 fixtures；要测真实端点需要有效凭据（`PC_CLIENT_ID=xxx PC_CLIENT_SECRET=yyy cargo run -- state`）。
+- 离线测试不打真实 API。`tests/offline/common/mod.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PC_TOKEN` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_OPEN_API_BASE_URL`，避免宿主环境污染断言——新增离线 CLI 测试沿用该模式：测试文件头部 `use crate::common::pc;`，按所属资源放进 `tests/offline/pjm/<resource>.rs`（新资源需在 `tests/offline/pjm/mod.rs` 加 `mod` 声明，并在 `tests/offline.rs` 的 `#[path]` 桥接已覆盖的目录内），自由命令放进 `tests/offline/dynamic/`。
+- 没有 mock server 或测试 fixtures；要测真实端点见下方「Live 测试」，或手动用有效凭据运行（`PC_CLIENT_ID=xxx PC_CLIENT_SECRET=yyy cargo run -- state`）。
+
+## Live 测试
+
+Live 测试（`tests/live.rs` + `tests/live/`）对真实 PingCode Open API 发请求，是跨步骤、步骤间交叉验证的**旅程**（如创建项目→列表包含→详情一致→创建工作项→…→删除）。**会在目标租户创建真实数据，务必使用专用测试租户的凭据运行。**
+
+- **门控**：默认全部跳过（测试直接 return 并打印跳过原因，不算失败），`./scripts/test.sh` 与无凭据环境的 `cargo test` 全绿。门控变量 `PC_LIVE_TESTS=1` 只认**真实环境变量**——`live-test.sh` 会自动导出它；不要把 `PC_LIVE_TESTS=1` 写进 `.env`（那样裸跑 `cargo test` 也会误打真实 API，harness 刻意不从 `.env` 武装门控）。
+- 凭据：`PC_CLIENT_ID`+`PC_CLIENT_SECRET` 成对，或 `PC_TOKEN`。可写在仓库根 `.env`（gitignored）里：`live-test.sh` 与 harness（门控通过后 `dotenvy::dotenv()`）都会加载 `.env`，真实环境变量优先，不必每次手动传入。可选 `PC_OPEN_API_BASE_URL`（指向其他环境）、`PC_LIVE_PROJECT_ID`（复用已有测试项目，不新建项目）、`PC_LIVE_KEEP=1`（保留资源便于排查）。
+- 运行：`./scripts/live-test.sh`（加载 `.env` → 自动武装门控 → 校验凭据 → `cargo test --test live -- --nocapture`），或手动 `PC_LIVE_TESTS=1 PC_CLIENT_ID=... PC_CLIENT_SECRET=... cargo test --test live -- --nocapture`。单独运行离线测试：`cargo test --test offline`。
+- **约定**：
+  - 一个业务链路 = `tests/live/journeys/` 下一个 `#[test]`；旅程内步骤严格顺序执行、共享一个 `State` 结构体保存创建出来的 id，步骤间交叉验证（列表包含、详情字段一致、更新后 get/list 均反映）。
+  - harness 在 `tests/live/common.rs`：`LiveCtx::new() -> Option<LiveCtx>`（门控）、`run_ok(args) -> serde_json::Value`（断言成功并解析 stdout JSON）、`run_fail(args) -> String`（断言非零退出，返回 stderr）、`unique_name(prefix)`/`unique_identifier(prefix)`（时间戳+PID+序号，避免重名；identifier ≤15 字符、大写+数字+连字符）。
+  - 列表响应统一是分页信封 `{page_index, page_size, total, values}`，单资源是裸对象；用 `common::values()` / `common::find_by_id()` 辅助断言。
+  - 清理：正常流程里资源在步骤末尾删除并验证 get 失败；步骤包在 `run_steps()` 闭包里，失败也先跑 `cleanup()`（用 `run_ok_ignored` best-effort 兜底残留，不 panic）。**无删除接口的资源**（pjm 项目、organization 团队/`user_group`）创建后保留，名字一律带 `pc-live-` 前缀便于在测试租户里人工识别清理；不要测试 `organization user create`（会发真实邀请邮件）。
+  - 请求体字段以各操作文件 doc comment 中的文档 URL 为准（先 webfetch 核对必填字段与响应结构），不要凭记忆编造；标签等依赖租户预置数据的步骤，先 list 字典、为空则跳过并 `eprintln!` 说明。已知未覆盖：`attachments upload-snippet`（`POST /v1/attachments` JSON 代码段）在测试环境稳定返回 400（文档字段核对无误，multipart 文件上传正常，疑为环境侧差异），live 只覆盖 multipart 文件上传。
 
 ## 凭据与本地配置
 
-- 凭据不要提交。可在仓库根目录建 `.env`（已 gitignore）：`main()` 启动时通过 `dotenvy::dotenv()` 自动加载工作目录下的 `.env`，已存在的真实环境变量优先（不会被覆盖）。注意 `tests/common/mod.rs` 的 `pc()` helper 会 `current_dir(std::env::temp_dir())`，避免仓库根目录的 `.env` 污染断言。
+- 凭据不要提交。可在仓库根目录建 `.env`（已 gitignore）：`main()` 启动时通过 `dotenvy::dotenv()` 自动加载工作目录下的 `.env`，已存在的真实环境变量优先（不会被覆盖）。注意离线测试的 `pc()` helper 会 `current_dir(std::env::temp_dir())`，避免仓库根目录的 `.env` 污染断言；live harness 则在门控（只认真实环境变量的 `PC_LIVE_TESTS=1`）通过后主动加载仓库根 `.env` 读取凭据（子进程仍 cwd 临时目录，凭据靠进程环境继承）。
 
 ## 在线文档检索（查 PingCode Open API 事实）
 
