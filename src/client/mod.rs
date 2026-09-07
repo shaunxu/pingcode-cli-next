@@ -128,6 +128,17 @@ impl PingCodeClient {
             .await
     }
 
+    /// 对 `{base_url}{path}` 发起带查询参数的 POST 请求，请求体为 JSON。
+    pub async fn post_with_query<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &Value,
+        body: &Value,
+    ) -> Result<T, ClientError> {
+        self.request(reqwest::Method::POST, path, Some(query), Some(body))
+            .await
+    }
+
     /// 对 `{base_url}{path}` 发起 PATCH 请求，请求体为 JSON。
     pub async fn patch<T: DeserializeOwned>(
         &self,

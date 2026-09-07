@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    activities, attachments, comments, organization, participants, pjm, relations, reviews,
-    security, ship, testhub, wiki, workload, workload_type,
+    activities, attachments, comments, expression, organization, participants, permission, pjm,
+    relations, reviews, security, ship, testhub, wiki, workload, workload_type,
 };
 
 /// PingCode Open API command line client
@@ -68,6 +68,16 @@ pub enum Command {
     Security {
         #[command(subcommand)]
         command: security::SecurityCommand,
+    },
+    /// Permission points and the current user's permissions on globals, pilots and principals
+    Permission {
+        #[command(subcommand)]
+        command: permission::PermissionCommand,
+    },
+    /// Expression syntax analysis and evaluation
+    Expression {
+        #[command(subcommand)]
+        command: expression::ExpressionCommand,
     },
     /// Workloads: time logged against work items, ideas, tickets and test cases
     Workload {

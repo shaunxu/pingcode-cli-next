@@ -1,7 +1,9 @@
 mod activities;
 mod attachments;
 mod comments;
+mod expression;
 mod participants;
+mod permission;
 mod relations;
 mod reviews;
 mod workload;

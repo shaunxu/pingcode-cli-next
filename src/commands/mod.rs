@@ -11,8 +11,10 @@ pub mod attachments;
 pub mod comments;
 pub mod context;
 pub mod dynamic;
+pub mod expression;
 pub mod organization;
 pub mod participants;
+pub mod permission;
 pub mod pjm;
 pub mod relations;
 pub mod reviews;
@@ -61,6 +63,16 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Security {
             command: security_command,
         } => security::run(&ctx, security_command).await,
+
+        // 跨模块全局资源：权限直接挂在顶层（pc permission <operation>）
+        Command::Permission {
+            command: permission_command,
+        } => permission::run(&ctx, permission_command).await,
+
+        // 跨模块全局资源：表达式直接挂在顶层（pc expression <operation>）
+        Command::Expression {
+            command: expression_command,
+        } => expression::run(&ctx, expression_command).await,
 
         // 跨模块全局资源：工时直接挂在顶层（pc workload <operation>）
         Command::Workload {
