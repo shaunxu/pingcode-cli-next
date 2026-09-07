@@ -1,6 +1,6 @@
 # 参考：PingCode Open API 审计要点
 
-审计 `src/commands` 时沉淀下来的结论。每次执行结束都要更新本文件（SKILL.md 第 10 步）。
+审计 `src/commands` 并交叉核对 `tests/offline/`、`tests/live/`（文档 ↔ 命令 ↔ 离线测试 ↔ live 旅程）时沉淀下来的结论。每次执行结束都要更新本文件（SKILL.md 第 10 步）。
 页面名指 `https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`。
 
 **黄金法则：** sitemap 页面名不等于 REST 路径。务必从抓取到的页面确认真实的
@@ -73,7 +73,14 @@ testplan、testrun、directory user、ship customer、workitem-state，以及各
 
 ## 测试注意事项
 
-- `tests/common/mod.rs` 的 `pc()` 会清掉凭据环境变量并在临时目录运行；测试全离线。
-  dry-run 预览断言在 **stderr**（`[dry-run] METHOD URL`）。
-- 路径变更时，操作文件与对应的 `tests/**/*.rs` URL 字符串都要改（断言里是完整 URL，
-  如 `https://api.pingcode.com/v1/...`）。
+- **离线测试**在 `tests/offline/`（入口 `tests/offline.rs`，按资源分目录组织）：
+  `tests/offline/common/mod.rs` 的 `pc()` 会清掉凭据环境变量并在临时目录运行，全部无网络。
+  dry-run 预览断言在 **stderr**（`[dry-run] METHOD URL`），断言里是完整 URL
+  （如 `https://api.pingcode.com/v1/...`）。路径/方法变更时，操作文件与对应的
+  `tests/offline/**/*.rs` URL 字符串都要改；新命令要补 help + dry-run 用例。
+- **Live 旅程**在 `tests/live/`（入口 `tests/live.rs`，harness 在 `common.rs`，
+  旅程在 `journeys/`）：对真实 API 发请求，默认跳过，仅 `PC_LIVE_TESTS=1` + 有效凭据时运行
+  （`./scripts/live-test.sh`），`./scripts/test.sh` 不触发它。旅程通过 CLI 参数调用命令
+  （`run_ok(["pjm", "workitem", ...])`），**不含 URL 字符串**，路径修正不会导致编译失败——
+  需人工核对受影响旅程的步骤断言，必要时按 AGENTS.md「Live 测试」约定补步骤或旅程，
+  改动后提示用户在专用测试租户跑 live 验证。

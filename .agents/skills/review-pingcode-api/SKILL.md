@@ -11,8 +11,10 @@ description: 对照官方 PingCode REST API 文档审计 pc CLI 的 `src/command
 
 ## 阶段 1 — 审计（只读）
 
-1. **盘点 CLI。** 从 `src/commands/**/*.rs` 中，按操作文件提取：doc comment 里的页面名（`文档：.../pingcode/<pageName>`）、HTTP 方法、以及实际调用的 `/v1/...` 路径字面量。
-   完成标准：每个操作文件都已登记，无遗漏。
+1. **盘点 CLI 与测试。** 从 `src/commands/**/*.rs` 中，按操作文件提取：doc comment 里的页面名（`文档：.../pingcode/<pageName>`）、HTTP 方法、以及实际调用的 `/v1/...` 路径字面量。同时盘点两侧测试：
+   - `tests/offline/`：每个资源文件覆盖了哪些操作（help / dry-run），dry-run 断言里的 HTTP 方法与完整 URL 字符串；
+   - `tests/live/journeys/`：每条旅程用 `run_ok`/`run_try`/`run_fail` 等调用了哪些子命令（参数序列）。
+   完成标准：每个操作文件、每份离线测试、每条 live 旅程都已登记，无遗漏。
 
 2. **拉取官方接口面。** 下载 `https://developer.alpha.pingcode.live/sitemap.xml`，只保留含 `/restapi/pingcode/` 的 `<loc>`，取末尾的 `<pageName>`。
    完成标准：得到一份排序后的官方页面名清单。
@@ -28,6 +30,10 @@ description: 对照官方 PingCode REST API 文档审计 pc CLI 的 `src/command
    - ② **文档 URL 404**——调用本身正确，仅 comment 里的 URL 错。
    - ③ **命令缺失**——非 DevOps、看起来应实现但 CLI 没有的端点。
    - ④ **误报**——看着可疑但其实正确（注明原因）。
+   - ⑤ **测试与命令/文档不一致**——审计四方差异（文档 ↔ 命令 ↔ 离线测试 ↔ live 旅程）：
+     离线断言的方法/完整 URL 与命令实际调用不符（通常 `cargo test` 已会失败，仍要登记）；
+     命令缺少离线 help/dry-run 覆盖；live 旅程引用了不存在或已改名的子命令/参数
+     （旅程是字符串参数、编译期不报错，运行才暴露），或受影响端点在旅程中缺少对应步骤。
    DevOps、OAuth/内部流程、通用说明页按 `reference.md` 明确排除。然后**等待用户批准**，不要动手改。
 
 ## 阶段 2 — 修复（仅在批准后）
@@ -43,11 +49,13 @@ description: 对照官方 PingCode REST API 文档审计 pc CLI 的 `src/command
    - CLI 面向用户的文字（help、错误、`println!`）一律英文；代码注释可用中文。
    完成标准：每条已批准的发现都有对应改动。
 
-8. **同步测试。** 更新受影响的 `tests/**` URL 断言；为每个新命令补 dry-run 用例（离线，走 `pc()` helper）。
-   完成标准：新命令都有 help + dry-run 测试。
+8. **同步测试——修复清单里所有 ⑤ 类项。**
+   - **离线（`tests/offline/`，入口 `tests/offline.rs`）**：把与命令实际调用不符的断言改对（dry-run 预览在 stderr，断言里是完整 URL，形如 `https://api.pingcode.com/v1/...`）；为缺少覆盖的命令（含 ③ 新增命令）补 help + dry-run 用例，走 `tests/offline/common/mod.rs` 的 `pc()` helper，按资源归入 `tests/offline/<module>/<resource>.rs`。
+   - **Live（`tests/live/`，入口 `tests/live.rs`）**：live 旅程通过 CLI 参数调用命令（如 `run_ok(["pjm", "workitem", ...])`），**不含 URL 字符串**——路径/方法修正不会让它编译失败，但会让原本失败的旅程步骤转为成功。更正引用了不存在/已改名子命令或参数的旅程调用；核对受影响端点所属旅程（`tests/live/journeys/` 按业务链路组织，只读端点看 `read_smoke.rs`）的断言是否需要调整；新命令若自然属于某条 CRUD 旅程，按 AGENTS.md「Live 测试」约定追加步骤（创建→列表/详情交叉验证→清理）。Live 默认跳过、本地无凭据无法验证，改动须在汇报中注明请用户跑 `./scripts/live-test.sh`。
+   完成标准：⑤ 类项全部处理；命令都有离线 help + dry-run 测试；受影响的 live 旅程已核对或明确说明无需改动。
 
-9. **验证。** 运行 `./scripts/test.sh`（fmt → clippy `-D warnings` → 测试）。若报格式问题先 `cargo fmt`。
-   完成标准：脚本全绿、零 warning。
+9. **验证。** 运行 `./scripts/test.sh`（fmt → clippy `-D warnings` → 测试）。若报格式问题先 `cargo fmt`。该脚本不触发 live 旅程（门控默认跳过）；本次若改动了 `tests/live/`，提醒用户在专用测试租户手动跑 `./scripts/live-test.sh`。
+   完成标准：脚本全绿、零 warning；live 改动已提示用户验证。
 
 10. **积累经验——更新 `reference.md`。** 把本次新得到的教训沉淀进去：新确认的命名规律、某个**不**双段的路径、服务端本就不存在的操作、新的排除项、或被推翻的旧规则。一条事实只保留一个出处；删掉本次被证伪的内容。
     完成标准：本次学到的每个非显而易见的点都已记录。
