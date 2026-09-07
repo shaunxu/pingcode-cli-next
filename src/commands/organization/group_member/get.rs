@@ -16,15 +16,15 @@ pub struct GetArgs {
     pub member_id: String,
 }
 
-/// 获取团队中的一个成员：`GET /v1/directory/groups/{group_id}/members/{member_id}`
+/// 获取团队中的一个成员：`GET /v1/directory/user_groups/{user_group_id}/members/{member_id}`
 /// （scope: `pcp:read:global:team`）。
 ///
 /// 返回成员引用（user）、所属团队引用（group）及在团队中的角色（role）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryGroupsByGroupIdMembersByMemberId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryUserGroupsByUserGroupIdMembersByMemberId
 pub async fn run(ctx: &Ctx, args: &GetArgs) -> anyhow::Result<()> {
     let path = format!(
-        "/v1/directory/groups/{}/members/{}",
+        "/v1/directory/user_groups/{}/members/{}",
         args.group_id, args.member_id
     );
     let response: Value = ctx.client.get(&path).await?;

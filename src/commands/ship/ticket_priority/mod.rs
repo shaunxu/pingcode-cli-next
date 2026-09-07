@@ -25,9 +25,9 @@ pub enum TicketPriorityCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketPriorities
     List(ListArgs),
-    /// List 工单优先级 in a product (GET /v1/ship/ticket/priorities?product_id=...)
+    /// List 工单优先级 in a product (GET /v1/ship/ticket/ticket_priorities?product_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketPrioritiesByProductId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTicketPrioritiesByProductId
     ListForProduct(ListForProductArgs),
     /// Get a 工单优先级 by id (GET /v1/ship/ticket_priorities/{priority_id})
     ///

@@ -37,7 +37,7 @@ fn dry_run_idea_property_list_for_product_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/ship/idea/properties?",
+            "https://api.pingcode.com/v1/ship/idea/idea_properties?",
         ))
         .stderr(predicate::str::contains("product_id=prod-1"));
 }

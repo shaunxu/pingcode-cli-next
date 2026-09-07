@@ -76,7 +76,7 @@ fn dry_run_workitem_state_list_for_project_previews_query() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/pjm/workitem/states?",
+            "https://api.pingcode.com/v1/pjm/workitem/workitem_states?",
         ))
         .stderr(predicate::str::contains("project_id=prj-123"))
         .stderr(predicate::str::contains("workitem_type_id=wt-1"));

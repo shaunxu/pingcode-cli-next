@@ -1,6 +1,6 @@
 //! 需求优先级（idea-priority）资源（只读）：`pc ship idea-priority <operation>`。
 //!
-//! 对应 `/v1/ship/idea_priorities` 与 `/v1/ship/idea/priorities` 的 REST 接口。
+//! 对应 `/v1/ship/idea_priorities` 与 `/v1/ship/idea/idea_priorities` 的 REST 接口。
 //!
 //! 新增操作（operation）：
 //! 1. 在本目录新建操作文件，定义 clap 参数结构体与 `run(ctx, args)`；
@@ -26,9 +26,9 @@ pub enum IdeaPriorityCommand {
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPriorities
     List(ListArgs),
 
-    /// List 需求优先级 in a product (GET /v1/ship/idea/priorities?product_id=...)
+    /// List 需求优先级 in a product (GET /v1/ship/idea/idea_priorities?product_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPrioritiesByProductId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaIdeaPrioritiesByProductId
     ListForProduct(ListForProductArgs),
 
     /// Get a 需求优先级 by id (GET /v1/ship/idea_priorities/{priority_id})

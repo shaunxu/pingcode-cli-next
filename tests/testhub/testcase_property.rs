@@ -41,7 +41,7 @@ fn dry_run_testcase_property_list_for_library() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/testhub/testcase/properties?",
+            "https://api.pingcode.com/v1/testhub/testcase/testcase_properties?",
         ))
         .stderr(predicate::str::contains("library_id=lib-1"));
 }

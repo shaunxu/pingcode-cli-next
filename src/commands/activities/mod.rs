@@ -60,7 +60,7 @@ pub enum ActivitiesCommand {
 
     /// Get an activity record by id (GET /v1/activities/{activity_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getActivitiesByActivityId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getActivitiesByActivityIdByPrincipalTypeAndPrincipalId
     Get(GetArgs),
 }
 

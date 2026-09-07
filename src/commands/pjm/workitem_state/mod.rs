@@ -2,7 +2,7 @@
 //!
 //! 覆盖「工作项配置」中的工作项状态字典：企业维度
 //! `/v1/pjm/workitem_states`（list-all/get/create/update）与项目+类型
-//! 维度 `/v1/pjm/workitem/states`（list-for-project，只读）。状态在方案
+//! 维度 `/v1/pjm/workitem/workitem_states`（list-for-project，只读）。状态在方案
 //! 中的挂载/移除、状态流转配置见 `pc pjm workitem-state-plan`。
 //!
 //! 新增操作（operation）：
@@ -34,9 +34,9 @@ pub enum WorkitemStateCommand {
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemStates
     ListAll(ListArgs),
 
-    /// List work item states for a project and type (GET /v1/pjm/workitem/states?project_id=...&workitem_type_id=...)
+    /// List work item states for a project and type (GET /v1/pjm/workitem/workitem_states?project_id=...&workitem_type_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemStatesByProjectIdAndWorkitemTypeId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemWorkitemStatesByProjectIdAndWorkitemTypeId
     ListForProject(ListForProjectArgs),
 
     /// Get a work item state by id (GET /v1/pjm/workitem_states/{state_id})

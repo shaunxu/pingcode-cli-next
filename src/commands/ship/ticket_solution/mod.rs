@@ -25,9 +25,9 @@ pub enum TicketSolutionCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketSolutions
     List(ListArgs),
-    /// List 工单解决方案 in a product (GET /v1/ship/ticket/solutions?product_id=...)
+    /// List 工单解决方案 in a product (GET /v1/ship/ticket/ticket_solutions?product_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketSolutionsByProductId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTicketSolutionsByProductId
     ListForProduct(ListForProductArgs),
     /// Get a 工单解决方案 by id (GET /v1/ship/ticket_solutions/{ticket_solution_id})
     ///

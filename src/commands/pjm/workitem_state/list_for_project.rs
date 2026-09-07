@@ -16,10 +16,10 @@ pub struct ListForProjectArgs {
     pub workitem_type_id: String,
 }
 
-/// 获取项目下某工作项类型的状态列表：`GET /v1/pjm/workitem/states`
+/// 获取项目下某工作项类型的状态列表：`GET /v1/pjm/workitem/workitem_states`
 /// （分页，scope: `pcp:read:pjm:workitem`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemStatesByProjectIdAndWorkitemTypeId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemWorkitemStatesByProjectIdAndWorkitemTypeId
 pub async fn run(ctx: &Ctx, args: &ListForProjectArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
     query.insert("project_id".into(), json!(args.project_id));
@@ -27,7 +27,7 @@ pub async fn run(ctx: &Ctx, args: &ListForProjectArgs) -> anyhow::Result<()> {
 
     let response: Value = ctx
         .client
-        .get_with_query("/v1/pjm/workitem/states", &Value::Object(query))
+        .get_with_query("/v1/pjm/workitem/workitem_states", &Value::Object(query))
         .await?;
 
     if ctx.config.dry_run {

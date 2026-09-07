@@ -25,9 +25,9 @@ pub enum TicketTypeCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTypes
     List(ListArgs),
-    /// List 工单类型 in a product (GET /v1/ship/ticket/types?product_id=...)
+    /// List 工单类型 in a product (GET /v1/ship/ticket/ticket_types?product_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTypesByProductId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTicketTypesByProductId
     ListForProduct(ListForProductArgs),
     /// Get a 工单类型 by id (GET /v1/ship/ticket_types/{ticket_type_id})
     ///

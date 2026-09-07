@@ -27,7 +27,7 @@ fn dry_run_group_member_list_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups/grp-123/members?",
+            "https://api.pingcode.com/v1/directory/user_groups/grp-123/members?",
         ))
         .stderr(predicate::str::contains("page_index=0"));
 }
@@ -44,7 +44,7 @@ fn dry_run_group_member_get_previews_path() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups/grp-123/members/usr-456",
+            "https://api.pingcode.com/v1/directory/user_groups/grp-123/members/usr-456",
         ));
 }
 
@@ -61,7 +61,7 @@ fn dry_run_group_member_add_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] POST"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups/grp-123/members",
+            "https://api.pingcode.com/v1/directory/user_groups/grp-123/members",
         ))
         .stderr(predicate::str::contains("\"role\": \"manager\""));
 }
@@ -78,6 +78,6 @@ fn dry_run_group_member_remove_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] DELETE"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups/grp-123/members/usr-456",
+            "https://api.pingcode.com/v1/directory/user_groups/grp-123/members/usr-456",
         ));
 }

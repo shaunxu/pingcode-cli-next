@@ -12,14 +12,14 @@ pub struct ListArgs {
     pub product_id: String,
 }
 
-/// 分页获取产品中的需求排期列表：`GET /v1/ship/products/{product_id}/plans`（scope: `pcp:read:ship:product`）。
+/// 分页获取产品中的需求排期列表：`GET /v1/ship/products/{product_id}/idea_plans`（scope: `pcp:read:ship:product`）。
 ///
 /// 响应为分页结构（`page_index` / `page_size` / `total` / `values`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getShipProductsByProductIdPlans
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getShipProductsByProductIdIdeaPlans
 pub async fn run(ctx: &Ctx, args: &ListArgs) -> anyhow::Result<()> {
     let path = format!(
-        "/v1/ship/products/{product_id}/plans",
+        "/v1/ship/products/{product_id}/idea_plans",
         product_id = args.product_id
     );
     let response: Value = ctx.client.get(&path).await?;

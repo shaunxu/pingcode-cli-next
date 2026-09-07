@@ -15,12 +15,12 @@ pub struct GetArgs {
     pub plan_id: String,
 }
 
-/// 获取产品中的一个需求排期：`GET /v1/ship/products/{product_id}/plans/{plan_id}`（scope: `pcp:read:ship:product`）。
+/// 获取产品中的一个需求排期：`GET /v1/ship/products/{product_id}/idea_plans/{plan_id}`（scope: `pcp:read:ship:product`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getShipProductsByProductIdPlansByPlanId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getShipProductsByProductIdIdeaPlansByPlanId
 pub async fn run(ctx: &Ctx, args: &GetArgs) -> anyhow::Result<()> {
     let path = format!(
-        "/v1/ship/products/{product_id}/plans/{plan_id}",
+        "/v1/ship/products/{product_id}/idea_plans/{plan_id}",
         product_id = args.product_id,
         plan_id = args.plan_id
     );

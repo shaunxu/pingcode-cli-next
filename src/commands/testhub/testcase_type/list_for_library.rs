@@ -12,18 +12,18 @@ pub struct ListForLibraryArgs {
     pub library_id: String,
 }
 
-/// 获取测试库下可用的用例类型：`GET /v1/testhub/testcase/types`（scope: `pcp:read:testhub:testcase`）。
+/// 获取测试库下可用的用例类型：`GET /v1/testhub/testcase/testcase_types`（scope: `pcp:read:testhub:testcase`）。
 ///
 /// 响应为分页结构（`page_index` / `page_size` / `total` / `values`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTypesByLibraryId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTestcaseTypesByLibraryId
 pub async fn run(ctx: &Ctx, args: &ListForLibraryArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
     query.insert("library_id".into(), json!(args.library_id));
 
     let response: Value = ctx
         .client
-        .get_with_query("/v1/testhub/testcase/types", &Value::Object(query))
+        .get_with_query("/v1/testhub/testcase/testcase_types", &Value::Object(query))
         .await?;
 
     if ctx.config.dry_run {

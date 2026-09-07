@@ -40,7 +40,7 @@ fn dry_run_idea_priority_list_for_product_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/ship/idea/priorities?",
+            "https://api.pingcode.com/v1/ship/idea/idea_priorities?",
         ))
         .stderr(predicate::str::contains("product_id=prod-1"));
 }

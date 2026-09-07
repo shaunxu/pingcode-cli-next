@@ -25,9 +25,9 @@ pub enum TestcaseTypeCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTypes
     List(ListArgs),
-    /// List test case types available in a library (GET /v1/testhub/testcase/types)
+    /// List test case types available in a library (GET /v1/testhub/testcase/testcase_types)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTypesByLibraryId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTestcaseTypesByLibraryId
     ListForLibrary(ListForLibraryArgs),
     /// Get a test case type by id (GET /v1/testhub/testcase_types/{type_id})
     ///

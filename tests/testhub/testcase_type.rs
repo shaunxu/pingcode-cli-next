@@ -39,7 +39,7 @@ fn dry_run_testcase_type_list_for_library() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/testhub/testcase/types?",
+            "https://api.pingcode.com/v1/testhub/testcase/testcase_types?",
         ))
         .stderr(predicate::str::contains("library_id=lib-1"));
 }

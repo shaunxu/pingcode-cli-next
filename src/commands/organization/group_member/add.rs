@@ -16,17 +16,17 @@ pub struct AddArgs {
     pub data: String,
 }
 
-/// 向团队中添加一个成员：`POST /v1/directory/groups/{group_id}/members`
+/// 向团队中添加一个成员：`POST /v1/directory/user_groups/{user_group_id}/members`
 /// （scope: `pcp:write:global:team`）。
 ///
 /// 请求体必填 `user_id`（用户 id）与 `role`（团队角色，
 /// `manager` 或 `member`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/postDirectoryGroupsByGroupIdMembers
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/postDirectoryUserGroupsByUserGroupIdMembers
 pub async fn run(ctx: &Ctx, args: &AddArgs) -> anyhow::Result<()> {
     let body = output::ensure_object(output::read_data(&args.data)?)?;
 
-    let path = format!("/v1/directory/groups/{}/members", args.group_id);
+    let path = format!("/v1/directory/user_groups/{}/members", args.group_id);
     let response: Value = ctx.client.post(&path, &body).await?;
 
     if ctx.config.dry_run {

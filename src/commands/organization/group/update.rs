@@ -16,17 +16,17 @@ pub struct UpdateArgs {
     pub data: String,
 }
 
-/// 部分更新一个团队：`PATCH /v1/directory/groups/{group_id}`
+/// 部分更新一个团队：`PATCH /v1/directory/user_groups/{user_group_id}`
 /// （scope: `pcp:write:global:team`）。
 ///
 /// 请求体可选 `name`、`visibility`（`private` / `public`）、`description`。
 /// 开放平台未提供删除团队的端点。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/patchDirectoryGroupsByGroupId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/patchDirectoryUserGroupsByUserGroupId
 pub async fn run(ctx: &Ctx, args: &UpdateArgs) -> anyhow::Result<()> {
     let body = output::ensure_object(output::read_data(&args.data)?)?;
 
-    let path = format!("/v1/directory/groups/{}", args.group_id);
+    let path = format!("/v1/directory/user_groups/{}", args.group_id);
     let response: Value = ctx.client.patch(&path, &body).await?;
 
     if ctx.config.dry_run {

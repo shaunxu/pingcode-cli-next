@@ -3,7 +3,7 @@
 //!
 //! 覆盖「工作项配置」中的工作项自定义属性字典：企业维度
 //! `/v1/pjm/workitem_properties`（list/get/create/update）与项目+类型
-//! 维度 `/v1/pjm/workitem/properties`（list-for-project，只读）。属性在
+//! 维度 `/v1/pjm/workitem/workitem_properties`（list-for-project，只读）。属性在
 //! 方案中的挂载/移除见 `pc pjm workitem-property-plan`。
 //!
 //! 新增操作（operation）：
@@ -35,9 +35,9 @@ pub enum WorkitemPropertyCommand {
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemProperties
     List(ListArgs),
 
-    /// List work item properties for a project and type (GET /v1/pjm/workitem/properties?project_id=...&workitem_type_id=...)
+    /// List work item properties for a project and type (GET /v1/pjm/workitem/workitem_properties?project_id=...&workitem_type_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemPropertiesByProjectIdAndWorkitemTypeId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemWorkitemPropertiesByProjectIdAndWorkitemTypeId
     ListForProject(ListForProjectArgs),
 
     /// Get a work item property by id (GET /v1/pjm/workitem_properties/{property_id})

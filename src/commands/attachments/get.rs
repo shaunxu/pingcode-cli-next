@@ -31,7 +31,7 @@ pub struct GetArgs {
 /// 获取评论附件时还需传 `comment_id`。文件类型附件返回 `download_url`，
 /// 代码段附件返回 `format`/`content`。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getAttachmentsByAttachmentId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getAttachmentsByAttachmentIdByPrincipalTypeAndPrincipalId
 pub async fn run(ctx: &Ctx, args: &GetArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
     query.insert("principal_type".into(), json!(args.principal_type.as_str()));

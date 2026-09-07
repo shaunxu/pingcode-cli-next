@@ -24,7 +24,7 @@ fn dry_run_product_plan_list_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/ship/products/prod-1/plans",
+            "https://api.pingcode.com/v1/ship/products/prod-1/idea_plans",
         ));
 }
 
@@ -40,6 +40,6 @@ fn dry_run_product_plan_get_previews_path() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/ship/products/prod-1/plans/PLN-1",
+            "https://api.pingcode.com/v1/ship/products/prod-1/idea_plans/PLN-1",
         ));
 }

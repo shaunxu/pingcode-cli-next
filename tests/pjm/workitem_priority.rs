@@ -39,7 +39,7 @@ fn dry_run_workitem_priority_list_for_project_previews_query() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/pjm/workitem/priorities?",
+            "https://api.pingcode.com/v1/pjm/workitem/workitem_priorities?",
         ))
         .stderr(predicate::str::contains("project_id=prj-123"));
 }

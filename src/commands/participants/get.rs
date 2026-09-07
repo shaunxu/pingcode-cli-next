@@ -28,7 +28,7 @@ pub struct GetArgs {
 /// 返回对象中 `type` 为 `user` 时带 `user` 字段，为 `user_group` 时带
 /// `user_group` 字段。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getParticipantsByParticipantId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getParticipantsByParticipantIdByPrincipalTypeAndPrincipalId
 pub async fn run(ctx: &Ctx, args: &GetArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
     query.insert("principal_type".into(), json!(args.principal_type.as_str()));

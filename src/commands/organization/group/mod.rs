@@ -1,6 +1,6 @@
 //! 团队（group，用户组）资源：`pc organization group <operation>`。
 //!
-//! 对应 `/v1/directory/groups` 及其直接子路径的 REST 接口。
+//! 对应 `/v1/directory/user_groups` 及其直接子路径的 REST 接口。
 //! 团队成员管理见 `group_member`（`pc organization group-member`）。
 //!
 //! 新增操作（operation）：
@@ -24,24 +24,24 @@ use update::UpdateArgs;
 /// `pc organization group` 的操作级子命令。
 #[derive(Debug, Subcommand)]
 pub enum GroupCommand {
-    /// List teams/groups (GET /v1/directory/groups)
+    /// List teams/groups (GET /v1/directory/user_groups)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryGroups
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryUserGroups
     List(Box<ListArgs>),
 
-    /// Get a team/group by id (GET /v1/directory/groups/{group_id})
+    /// Get a team/group by id (GET /v1/directory/user_groups/{user_group_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryGroupsByGroupId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryUserGroupsByUserGroupId
     Get(GetArgs),
 
-    /// Create a team/group (POST /v1/directory/groups)
+    /// Create a team/group (POST /v1/directory/user_groups)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/postDirectoryGroups
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/postDirectoryUserGroups
     Create(CreateArgs),
 
-    /// Partially update a team/group (PATCH /v1/directory/groups/{group_id})
+    /// Partially update a team/group (PATCH /v1/directory/user_groups/{user_group_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/patchDirectoryGroupsByGroupId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/patchDirectoryUserGroupsByUserGroupId
     Update(UpdateArgs),
 }
 

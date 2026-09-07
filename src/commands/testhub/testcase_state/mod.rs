@@ -25,9 +25,9 @@ pub enum TestcaseStateCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseStates
     List(ListArgs),
-    /// List test case states available in a library (GET /v1/testhub/testcase/states)
+    /// List test case states available in a library (GET /v1/testhub/testcase/testcase_states)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseStatesByLibraryId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTestcaseStatesByLibraryId
     ListForLibrary(ListForLibraryArgs),
     /// Get a test case state by id (GET /v1/testhub/testcase_states/{state_id})
     ///

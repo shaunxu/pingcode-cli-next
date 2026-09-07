@@ -3,7 +3,7 @@
 //!
 //! 提供工作项优先级字典的查询：企业维度
 //! `/v1/pjm/workitem_priorities`、项目维度
-//! `/v1/pjm/workitem/priorities` 与单条
+//! `/v1/pjm/workitem/workitem_priorities` 与单条
 //! `/v1/pjm/workitem_priorities/{id}`。
 //!
 //! 新增操作（operation）：
@@ -31,9 +31,9 @@ pub enum WorkitemPriorityCommand {
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemPriorities
     List(ListArgs),
 
-    /// List work item priorities in a project (GET /v1/pjm/workitem/priorities?project_id=...)
+    /// List work item priorities in a project (GET /v1/pjm/workitem/workitem_priorities?project_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemPrioritiesByProjectId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemWorkitemPrioritiesByProjectId
     ListForProject(ListForProjectArgs),
 
     /// Get a work item priority by id (GET /v1/pjm/workitem_priorities/{priority_id})

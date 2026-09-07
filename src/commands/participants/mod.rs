@@ -73,7 +73,7 @@ pub enum ParticipantsCommand {
 
     /// Get a participant by id (GET /v1/participants/{participant_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getParticipantsByParticipantId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getParticipantsByParticipantIdByPrincipalTypeAndPrincipalId
     Get(GetArgs),
 
     /// Add a participant to a principal (POST /v1/participants)

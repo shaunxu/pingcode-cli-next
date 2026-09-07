@@ -1,6 +1,6 @@
 //! 需求属性（idea property / 自定义字段）资源：`pc ship idea-property <operation>`。
 //!
-//! 对应 `/v1/ship/idea_properties` 与 `/v1/ship/idea/properties` 的 REST 接口。
+//! 对应 `/v1/ship/idea_properties` 与 `/v1/ship/idea/idea_properties` 的 REST 接口。
 //!
 //! 新增操作（operation）：
 //! 1. 在本目录新建操作文件，定义 clap 参数结构体与 `run(ctx, args)`；
@@ -30,9 +30,9 @@ pub enum IdeaPropertyCommand {
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaProperties
     List(ListArgs),
 
-    /// List idea properties in a product (GET /v1/ship/idea/properties?product_id=...)
+    /// List idea properties in a product (GET /v1/ship/idea/idea_properties?product_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaPropertiesByProductId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipIdeaIdeaPropertiesByProductId
     ListForProduct(ListForProductArgs),
 
     /// Get an idea property by id (GET /v1/ship/idea_properties/{property_id})

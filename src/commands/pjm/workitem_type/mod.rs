@@ -2,7 +2,7 @@
 //!
 //! 覆盖「工作项配置」中的工作项类型字典：企业维度
 //! `/v1/pjm/workitem_types`（list/get/create/update/delete）与项目维度
-//! `/v1/pjm/workitem/types`（list-for-project，只读）。类型在方案中的
+//! `/v1/pjm/workitem/workitem_types`（list-for-project，只读）。类型在方案中的
 //! 挂载/移除见 `pc pjm workitem-type-plan`。
 //!
 //! 新增操作（operation）：
@@ -36,9 +36,9 @@ pub enum WorkitemTypeCommand {
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemTypes
     List(ListArgs),
 
-    /// List work item types in a project (GET /v1/pjm/workitem/types?project_id=...)
+    /// List work item types in a project (GET /v1/pjm/workitem/workitem_types?project_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemTypesByProjectId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getPjmWorkitemWorkitemTypesByProjectId
     ListForProject(ListForProjectArgs),
 
     /// Get a work item type by id (GET /v1/pjm/workitem_types/{workitem_type_id})

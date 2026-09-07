@@ -26,7 +26,7 @@ fn dry_run_group_list_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups?",
+            "https://api.pingcode.com/v1/directory/user_groups?",
         ))
         .stderr(predicate::str::contains("page_index=0"));
 }
@@ -42,7 +42,7 @@ fn dry_run_group_get_previews_path() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups/grp-123",
+            "https://api.pingcode.com/v1/directory/user_groups/grp-123",
         ));
 }
 
@@ -58,7 +58,7 @@ fn dry_run_group_create_previews_request() {
         .success()
         .stderr(predicate::str::contains("[dry-run] POST"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups",
+            "https://api.pingcode.com/v1/directory/user_groups",
         ))
         .stderr(predicate::str::contains("\"visibility\": \"public\""));
 }
@@ -76,6 +76,6 @@ fn dry_run_group_update_previews_patch() {
         .success()
         .stderr(predicate::str::contains("[dry-run] PATCH"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/directory/groups/grp-123",
+            "https://api.pingcode.com/v1/directory/user_groups/grp-123",
         ));
 }

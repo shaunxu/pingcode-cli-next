@@ -27,7 +27,7 @@ pub struct GetArgs {
 /// 查询参数 `principal_type`（主体类型：`workitem`/`testrun`/`testcase`/
 /// `idea`/`ticket`）、`principal_id`（主体 id）必填。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getActivitiesByActivityId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getActivitiesByActivityIdByPrincipalTypeAndPrincipalId
 pub async fn run(ctx: &Ctx, args: &GetArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
     query.insert("principal_type".into(), json!(args.principal_type.as_str()));

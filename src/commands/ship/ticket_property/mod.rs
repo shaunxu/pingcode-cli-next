@@ -29,9 +29,9 @@ pub enum TicketPropertyCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketProperties
     List(ListArgs),
-    /// List 工单属性 in a product (GET /v1/ship/ticket/properties?product_id=...)
+    /// List 工单属性 in a product (GET /v1/ship/ticket/ticket_properties?product_id=...)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketPropertiesByProductId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTicketPropertiesByProductId
     ListForProduct(ListForProductArgs),
     /// Get a 工单属性 by id (GET /v1/ship/ticket_properties/{property_id})
     ///

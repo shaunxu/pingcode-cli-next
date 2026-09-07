@@ -29,9 +29,9 @@ pub enum TestcasePropertyCommand {
     ///
     /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseProperties
     List(ListArgs),
-    /// List test case properties available in a library (GET /v1/testhub/testcase/properties)
+    /// List test case properties available in a library (GET /v1/testhub/testcase/testcase_properties)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcasePropertiesByLibraryId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getTesthubTestcaseTestcasePropertiesByLibraryId
     ListForLibrary(ListForLibraryArgs),
     /// Get a test case property by id (GET /v1/testhub/testcase_properties/{property_id})
     ///

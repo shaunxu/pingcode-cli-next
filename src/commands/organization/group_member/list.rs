@@ -20,12 +20,12 @@ pub struct ListArgs {
     pub page_size: Option<u64>,
 }
 
-/// 分页获取团队中的成员列表：`GET /v1/directory/groups/{group_id}/members`
+/// 分页获取团队中的成员列表：`GET /v1/directory/user_groups/{user_group_id}/members`
 /// （scope: `pcp:read:global:team`）。
 ///
 /// 响应为分页结构（`page_index` / `page_size` / `total` / `values`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryGroupsByGroupIdMembers
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryUserGroupsByUserGroupIdMembers
 pub async fn run(ctx: &Ctx, args: &ListArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
     if let Some(page_index) = args.page_index {
@@ -35,7 +35,7 @@ pub async fn run(ctx: &Ctx, args: &ListArgs) -> anyhow::Result<()> {
         query.insert("page_size".into(), json!(page_size));
     }
 
-    let path = format!("/v1/directory/groups/{}/members", args.group_id);
+    let path = format!("/v1/directory/user_groups/{}/members", args.group_id);
     let response: Value = ctx
         .client
         .get_with_query(&path, &Value::Object(query))

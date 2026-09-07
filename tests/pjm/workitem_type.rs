@@ -90,7 +90,7 @@ fn dry_run_workitem_type_list_for_project_previews_query() {
         .success()
         .stderr(predicate::str::contains("[dry-run] GET"))
         .stderr(predicate::str::contains(
-            "https://api.pingcode.com/v1/pjm/workitem/types?",
+            "https://api.pingcode.com/v1/pjm/workitem/workitem_types?",
         ))
         .stderr(predicate::str::contains("project_id=prj-123"));
 }

@@ -84,7 +84,7 @@ pub enum AttachmentsCommand {
 
     /// Get an attachment by id (GET /v1/attachments/{attachment_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getAttachmentsByAttachmentId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getAttachmentsByAttachmentIdByPrincipalTypeAndPrincipalId
     Get(GetArgs),
 
     /// Upload a file attachment (multipart POST /v1/attachments)

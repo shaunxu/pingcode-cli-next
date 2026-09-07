@@ -12,16 +12,16 @@ pub struct ListForProductArgs {
     pub product_id: String,
 }
 
-/// 分页获取产品中的工单状态：`GET /v1/ship/ticket/states`
+/// 分页获取产品中的工单状态：`GET /v1/ship/ticket/ticket_states`
 /// （查询参数 `product_id`，scope: `pcp:read:ship:ticket`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketStatesByProductId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getShipTicketTicketStatesByProductId
 pub async fn run(ctx: &Ctx, args: &ListForProductArgs) -> anyhow::Result<()> {
     let query = serde_json::Map::from_iter([("product_id".into(), json!(args.product_id))]);
 
     let response: Value = ctx
         .client
-        .get_with_query("/v1/ship/ticket/states", &Value::Object(query))
+        .get_with_query("/v1/ship/ticket/ticket_states", &Value::Object(query))
         .await?;
 
     if ctx.config.dry_run {

@@ -1,6 +1,6 @@
 //! 团队成员（group member）资源：`pc organization group-member <operation>`。
 //!
-//! 对应 `/v1/directory/groups/{group_id}/members` 的 REST 接口。
+//! 对应 `/v1/directory/user_groups/{user_group_id}/members` 的 REST 接口。
 //!
 //! 新增操作（operation）：
 //! 1. 在本目录新建操作文件，定义 clap 参数结构体与 `run(ctx, args)`；
@@ -23,24 +23,24 @@ use remove::RemoveArgs;
 /// `pc organization group-member` 的操作级子命令。
 #[derive(Debug, Subcommand)]
 pub enum GroupMemberCommand {
-    /// List members of a team/group (GET /v1/directory/groups/{group_id}/members)
+    /// List members of a team/group (GET /v1/directory/user_groups/{user_group_id}/members)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryGroupsByGroupIdMembers
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryUserGroupsByUserGroupIdMembers
     List(ListArgs),
 
-    /// Get a member of a team/group by id (GET /v1/directory/groups/{group_id}/members/{member_id})
+    /// Get a member of a team/group by id (GET /v1/directory/user_groups/{user_group_id}/members/{member_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryGroupsByGroupIdMembersByMemberId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/getDirectoryUserGroupsByUserGroupIdMembersByMemberId
     Get(GetArgs),
 
-    /// Add a member to a team/group (POST /v1/directory/groups/{group_id}/members)
+    /// Add a member to a team/group (POST /v1/directory/user_groups/{user_group_id}/members)
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/postDirectoryGroupsByGroupIdMembers
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/postDirectoryUserGroupsByUserGroupIdMembers
     Add(AddArgs),
 
-    /// Remove a member from a team/group (DELETE /v1/directory/groups/{group_id}/members/{member_id})
+    /// Remove a member from a team/group (DELETE /v1/directory/user_groups/{user_group_id}/members/{member_id})
     ///
-    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/deleteDirectoryGroupsByGroupIdMembersByMemberId
+    /// Docs: https://developer.alpha.pingcode.live/restapi/pingcode/deleteDirectoryUserGroupsByUserGroupIdMembersByMemberId
     Remove(RemoveArgs),
 }
 
