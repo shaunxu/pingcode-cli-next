@@ -1,20 +1,20 @@
 use clap::Args;
 use serde_json::{json, Value};
 
-use crate::commands::comments::PrincipalType;
+use crate::commands::entity_properties::EntityType;
 use crate::commands::Ctx;
 use crate::output;
 
-/// `pc comments list` 的参数。
+/// `pc entity-properties list` 的参数。
 #[derive(Debug, Args)]
 pub struct ListArgs {
-    /// Type of the principal the comments belong to
+    /// Type of the entity the properties belong to
     #[arg(long, value_enum, value_name = "TYPE")]
-    pub principal_type: PrincipalType,
+    pub entity_type: EntityType,
 
-    /// Id of the principal (work item, test run, idea, ticket, page, ...)
+    /// Id of the entity (work item, idea, ticket, test case)
     #[arg(long, value_name = "ID")]
-    pub principal_id: String,
+    pub entity_id: String,
 
     /// Page index, starting from 0
     #[arg(long, value_name = "INDEX")]
@@ -25,22 +25,21 @@ pub struct ListArgs {
     pub page_size: Option<u64>,
 }
 
-/// 获取评论列表：`GET /v1/comments`（分页，scope 依赖评论所属主体，
-/// 如 workitem 需要 `pcp:read:pjm:workitem`）。
+/// 获取实体中的扩展属性列表：`GET /v1/entity_properties`
+/// （分页，scope 依赖所属实体，如 workitem 需要 `pcp:read:pjm:workitem`）。
 ///
 /// 查询参数：
-/// - `principal_type`：评论主体类型（`workitem`/`workitem_review`/`testrun`/
-///   `testcase`/`testcase_review`/`idea`/`idea_review`/`ticket`/`page`）；
-/// - `principal_id`：评论主体 id；
+/// - `entity_type`：实体类型（`workitem`/`idea`/`ticket`/`testcase`）；
+/// - `entity_id`：实体 id；
 /// - `page_index`/`page_size`：分页参数。
 ///
 /// 响应为分页结构（`page_index` / `page_size` / `total` / `values`）。
 ///
-/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getCommentsByPrincipalTypeAndPrincipalId
+/// 文档：https://developer.alpha.pingcode.live/restapi/pingcode/getEntityPropertiesByEntityTypeAndEntityId
 pub async fn run(ctx: &Ctx, args: &ListArgs) -> anyhow::Result<()> {
     let mut query = serde_json::Map::new();
-    query.insert("principal_type".into(), json!(args.principal_type.as_str()));
-    query.insert("principal_id".into(), json!(args.principal_id));
+    query.insert("entity_type".into(), json!(args.entity_type.as_str()));
+    query.insert("entity_id".into(), json!(&args.entity_id));
     if let Some(page_index) = args.page_index {
         query.insert("page_index".into(), json!(page_index));
     }
@@ -50,7 +49,7 @@ pub async fn run(ctx: &Ctx, args: &ListArgs) -> anyhow::Result<()> {
 
     let response: Value = ctx
         .client
-        .get_with_query("/v1/comments", &Value::Object(query))
+        .get_with_query("/v1/entity_properties", &Value::Object(query))
         .await?;
 
     if ctx.config.dry_run {

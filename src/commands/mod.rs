@@ -11,6 +11,7 @@ pub mod attachments;
 pub mod comments;
 pub mod context;
 pub mod dynamic;
+pub mod entity_properties;
 pub mod expression;
 pub mod organization;
 pub mod participants;
@@ -88,6 +89,11 @@ pub async fn run(command: Command, config: &Config) -> anyhow::Result<()> {
         Command::Comments {
             command: comments_command,
         } => comments::run(&ctx, comments_command).await,
+
+        // 跨模块全局资源：实体扩展属性直接挂在顶层（pc entity-properties <operation>）
+        Command::EntityProperties {
+            command: entity_properties_command,
+        } => entity_properties::run(&ctx, entity_properties_command).await,
 
         // 跨模块全局资源：附件直接挂在顶层（pc attachments <operation>）
         Command::Attachments {

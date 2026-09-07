@@ -1,6 +1,7 @@
 mod activities;
 mod attachments;
 mod comments;
+mod entity_properties;
 mod expression;
 mod participants;
 mod permission;

@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    activities, attachments, comments, expression, organization, participants, permission, pjm,
-    relations, reviews, security, ship, testhub, wiki, workload, workload_type,
+    activities, attachments, comments, entity_properties, expression, organization, participants,
+    permission, pjm, relations, reviews, security, ship, testhub, wiki, workload, workload_type,
 };
 
 /// PingCode Open API command line client
@@ -98,6 +98,11 @@ pub enum Command {
     Attachments {
         #[command(subcommand)]
         command: attachments::AttachmentsCommand,
+    },
+    /// Custom key/value entity properties (JSON) on work items, ideas, tickets and test cases
+    EntityProperties {
+        #[command(subcommand)]
+        command: entity_properties::EntityPropertiesCommand,
     },
     /// Participants (watchers, users or teams) on work items, test cases, ideas, tickets, wiki pages and more
     Participants {
