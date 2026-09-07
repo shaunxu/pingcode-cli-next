@@ -91,6 +91,24 @@ impl LiveCtx {
         let _ = self.run_raw(args);
     }
 
+    /// 尝试执行：成功返回 `Some(Value)`，失败返回 `None`（并打印 stderr 摘要）。
+    /// 用于受租户预置数据/未公开服务端规则约束的步骤，前置不满足时优雅跳过整个旅程。
+    pub fn run_try(&self, args: &[&str]) -> Option<Value> {
+        let output = self.run_raw(args);
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            serde_json::from_str(stdout.trim()).ok()
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            eprintln!(
+                "skip: pc {} failed ({}); this step needs tenant-specific preconfiguration",
+                args.join(" "),
+                stderr.trim().lines().last().unwrap_or("")
+            );
+            None
+        }
+    }
+
     /// 运行命令并断言失败（非零退出），返回 stderr 文本（用于 404/参数错误等负面用例）。
     pub fn run_fail(&self, args: &[&str]) -> String {
         let output = self.run_raw(args);
@@ -103,16 +121,24 @@ impl LiveCtx {
         String::from_utf8_lossy(&output.stderr).into_owned()
     }
 
-    /// 生成唯一资源名/标识：`<prefix>-<pid>-<seq>`（标识类字段只用大写、数字、连字符）。
-    pub fn unique_name(&self, prefix: &str) -> String {
+    /// 生成唯一资源名：`pcl-<pid>-<ts>-<seq>`。
+    ///
+    /// 注意 PingCode 多数资源 name 上限 32 字符，因此 base 名用短前缀 `pcl`
+    /// （pc-live 的缩写），带后缀后总长 ≤22；调用方不要再叠加 `pc-live-xxx` 长前缀，
+    /// 用场景短名作为 suffix，如 `unique_name("board")` → `pcl-board-123-45-6`。
+    pub fn unique_name(&self, suffix: &str) -> String {
         let seq = NAME_SEQ.fetch_add(1, Ordering::Relaxed);
-        let short_pid = std::process::id() % 100000;
+        let short_pid = std::process::id() % 1000;
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_secs()
-            % 1_000_000;
-        format!("{prefix}-{short_pid}-{ts}-{seq}")
+            % 100_000;
+        if suffix.is_empty() {
+            format!("pcl-{short_pid}-{ts}-{seq}")
+        } else {
+            format!("pcl-{suffix}-{short_pid}-{ts}-{seq}")
+        }
     }
 
     /// 标识字段（project/space identifier）：≤15 字符、大写字母/数字/连字符。

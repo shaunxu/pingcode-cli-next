@@ -53,7 +53,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         s.project_id = pid.clone();
         eprintln!("reusing project {pid} (PC_LIVE_PROJECT_ID)");
     } else {
-        let name = ctx.unique_name("pc-live");
+        let name = ctx.unique_name("proj");
         let identifier = ctx.unique_identifier("PC");
         let body = json!({
             "name": name,
@@ -76,7 +76,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
             "project",
             "list",
             "--keywords",
-            "pc-live",
+            "pcl",
             "--page-size",
             "100",
         ]);
@@ -113,7 +113,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         .to_string();
 
     // 8. 创建工作项。
-    let title = ctx.unique_name("pc-live-wi");
+    let title = ctx.unique_name("wi");
     let body = json!({
         "project_id": s.project_id,
         "type_id": type_id,
@@ -140,7 +140,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     assert_eq!(str_field(&fetched, "title"), Some(title.as_str()));
 
     // 11. 修改工作项标题，详情与列表均反映新值。
-    let new_title = ctx.unique_name("pc-live-wi-updated");
+    let new_title = ctx.unique_name("wi");
     let body = json!({ "title": new_title });
     let updated = ctx.run_ok(&[
         "pjm",
@@ -333,7 +333,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     ]);
 
     // 16. 负面用例：不存在的工作项 id 应失败。
-    let stderr = ctx.run_fail(&["pjm", "workitem", "get", "pc-live-nonexistent-id"]);
+    let stderr = ctx.run_fail(&["pjm", "workitem", "get", "pcl-nonexistent-id"]);
     assert!(!stderr.is_empty(), "failed get should print an API error");
 
     // 17. 删除工作项，之后 get 应失败。

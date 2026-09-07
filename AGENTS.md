@@ -92,10 +92,12 @@ Live 测试（`tests/live.rs` + `tests/live/`）对真实 PingCode Open API 发�
 - 运行：`./scripts/live-test.sh`（加载 `.env` → 自动武装门控 → 校验凭据 → `cargo test --test live -- --nocapture`），或手动 `PC_LIVE_TESTS=1 PC_CLIENT_ID=... PC_CLIENT_SECRET=... cargo test --test live -- --nocapture`。单独运行离线测试：`cargo test --test offline`。
 - **约定**：
   - 一个业务链路 = `tests/live/journeys/` 下一个 `#[test]`；旅程内步骤严格顺序执行、共享一个 `State` 结构体保存创建出来的 id，步骤间交叉验证（列表包含、详情字段一致、更新后 get/list 均反映）。
-  - harness 在 `tests/live/common.rs`：`LiveCtx::new() -> Option<LiveCtx>`（门控）、`run_ok(args) -> serde_json::Value`（断言成功并解析 stdout JSON）、`run_fail(args) -> String`（断言非零退出，返回 stderr）、`unique_name(prefix)`/`unique_identifier(prefix)`（时间戳+PID+序号，避免重名；identifier ≤15 字符、大写+数字+连字符）。
+  - 现有旅程（`tests/live/journeys/`）：`pjm`（项目+工作项链路，唯一覆盖项目创建）、`board`（看板/栏/泳道）、`release`（发布/分组/类别）、`pjm_extras`（工作项关联/标签字典/关注人/工时）、`reviews`（评审，受未公开规则约束会跳过）、`read_smoke`（只读字典冒烟）、`ship`（产品/需求/工单）、`testhub`（测试库/套件/用例）、`wiki`（空间/页面）、`organization`（部门/团队）。需要项目的旅程通过 `support::shared_project_id()` 复用一个进程级共享 hybrid 项目（`PC_LIVE_PROJECT_ID` 优先），把项目残留降到每次运行一个。
+  - harness 在 `tests/live/common.rs`：`LiveCtx::new() -> Option<LiveCtx>`（门控）、`run_ok(args) -> serde_json::Value`（断言成功并解析 stdout JSON）、`run_fail(args) -> String`（断言非零退出，返回 stderr）、`run_try(args) -> Option<Value>`（成功取值、失败打印并返回 None，用于受租户预置数据/未公开服务端规则约束的步骤，优雅跳过）、`run_ok_ignored(args)`（清理用 best-effort）、`unique_name(suffix)`/`unique_identifier(prefix)`（时间戳+PID+序号）。
+  - **资源命名**：PingCode 多数资源 name 上限 32 字符，因此 `unique_name(suffix)` 生成短前缀 `pcl-<suffix>-<pid>-<ts>-<seq>`（≤22 字符）；调用方传场景短后缀（如 `unique_name("board")`），不要再叠加长前缀，列表过滤关键词用 `"pcl"`。`unique_identifier` 生成 ≤15 字符、大写+数字+连字符的 identifier。
   - 列表响应统一是分页信封 `{page_index, page_size, total, values}`，单资源是裸对象；用 `common::values()` / `common::find_by_id()` 辅助断言。
-  - 清理：正常流程里资源在步骤末尾删除并验证 get 失败；步骤包在 `run_steps()` 闭包里，失败也先跑 `cleanup()`（用 `run_ok_ignored` best-effort 兜底残留，不 panic）。**无删除接口的资源**（pjm 项目、organization 团队/`user_group`）创建后保留，名字一律带 `pc-live-` 前缀便于在测试租户里人工识别清理；不要测试 `organization user create`（会发真实邀请邮件）。
-  - 请求体字段以各操作文件 doc comment 中的文档 URL 为准（先 webfetch 核对必填字段与响应结构），不要凭记忆编造；标签等依赖租户预置数据的步骤，先 list 字典、为空则跳过并 `eprintln!` 说明。已知未覆盖：`attachments upload-snippet`（`POST /v1/attachments` JSON 代码段）在测试环境稳定返回 400（文档字段核对无误，multipart 文件上传正常，疑为环境侧差异），live 只覆盖 multipart 文件上传。
+  - 清理：正常流程里资源在步骤末尾删除并验证 get 失败（删除后 get 不一定立即失败的端点如 workload 只断言删除成功）；步骤包在 `run_steps()` 闭包里，失败也先跑 `cleanup()`（用 `run_ok_ignored` best-effort 兜底残留，不 panic）。**无删除接口的资源**（pjm 项目、ship 产品/需求/工单、testhub 测试库、organization 团队/`user_group`）创建后保留，名字带 `pcl-` 前缀便于在测试租户里人工识别清理；不要测试 `organization user create`（会发真实邀请邮件）。
+  - 请求体字段以各操作文件 doc comment 中的文档 URL 为准（先 webfetch 核对必填字段与响应结构），不要凭记忆编造；标签等依赖租户预置数据的步骤，先 list 字典、为空则跳过并 `eprintln!` 说明。已知环境侧差异：`attachments upload-snippet`（`POST /v1/attachments` JSON 代码段）在测试环境稳定 400（multipart 文件上传正常），live 只覆盖 multipart；`reviews create` 要求未公开的「评审规则阶段评审人」（错误 100071，公开文档无对应字段），评审旅程用 `run_try` 创建、失败即跳过；`permission points`/`my-global` 在部分租户返回 500/403，不纳入只读冒烟。
 
 ## 凭据与本地配置
 

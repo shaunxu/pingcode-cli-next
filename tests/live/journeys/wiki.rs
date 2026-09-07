@@ -29,7 +29,7 @@ struct State {
 
 fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Error>> {
     // 1. 创建空间（企业令牌只能建 organization 空间）。
-    let name = ctx.unique_name("pc-live-wiki");
+    let name = ctx.unique_name("wiki");
     let identifier = ctx.unique_identifier("WK");
     let body = json!({
         "scope_type": "organization",
@@ -50,7 +50,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         "space",
         "list",
         "--keywords",
-        "pc-live",
+        "pcl",
         "--page-size",
         "100",
     ]);
@@ -64,7 +64,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     assert_eq!(str_field(&fetched, "id"), Some(s.space_id.as_str()));
 
     // 4. 创建页面（带 markdown 正文）。
-    let page_name = ctx.unique_name("pc-live-page");
+    let page_name = ctx.unique_name("page");
     let body = json!({
         "space_id": s.space_id,
         "name": page_name,
@@ -151,7 +151,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     s.comment_id = None;
 
     // 10. 负面用例：不存在的空间 id 应失败。
-    let stderr = ctx.run_fail(&["wiki", "space", "get", "pc-live-nonexistent-space"]);
+    let stderr = ctx.run_fail(&["wiki", "space", "get", "pcl-nope-space"]);
     assert!(!stderr.is_empty());
 
     // 11. 删除页面与空间，之后 get 均应失败（完整自清理）。

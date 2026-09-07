@@ -29,7 +29,7 @@ struct State {
 
 fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Error>> {
     // ---- 部门全 CRUD ----
-    let dept_name = ctx.unique_name("pc-live-dept");
+    let dept_name = ctx.unique_name("dept");
     let body = json!({ "name": dept_name });
     let dept = ctx.run_ok(&[
         "organization",
@@ -53,7 +53,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         "department list should contain created department"
     );
 
-    let new_dept_name = ctx.unique_name("pc-live-dept-updated");
+    let new_dept_name = ctx.unique_name("dept");
     let body = json!({ "name": new_dept_name });
     let updated = ctx.run_ok(&[
         "organization",
@@ -68,7 +68,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     assert_eq!(str_field(&fetched, "name"), Some(new_dept_name.as_str()));
 
     // ---- 团队 create/get/list/update + 成员 ----
-    let group_name = ctx.unique_name("pc-live-group");
+    let group_name = ctx.unique_name("group");
     let body = json!({ "name": group_name, "visibility": "private" });
     let group = ctx.run_ok(&[
         "organization",
@@ -92,7 +92,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         "group list should contain created group"
     );
 
-    let new_group_name = ctx.unique_name("pc-live-group-updated");
+    let new_group_name = ctx.unique_name("group");
     let body = json!({ "name": new_group_name });
     let updated = ctx.run_ok(&[
         "organization",
@@ -147,12 +147,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     }
 
     // 负面用例：不存在的部门应失败。
-    let stderr = ctx.run_fail(&[
-        "organization",
-        "department",
-        "get",
-        "pc-live-nonexistent-dept",
-    ]);
+    let stderr = ctx.run_fail(&["organization", "department", "get", "pcl-nope-dept"]);
     assert!(!stderr.is_empty());
 
     // 删除部门，之后 get 应失败（自清理）。
