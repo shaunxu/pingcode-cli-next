@@ -16,17 +16,6 @@ pub enum Credentials {
     Anonymous,
 }
 
-impl Credentials {
-    /// User-facing name of the authentication method
-    pub fn label(&self) -> &'static str {
-        match self {
-            Credentials::Token(_) => "access token",
-            Credentials::Client { .. } => "client credentials (enterprise token)",
-            Credentials::Anonymous => "anonymous (dry-run, no request is sent)",
-        }
-    }
-}
-
 /// Runtime configuration, merged from CLI arguments and environment variables
 #[derive(Debug, Clone)]
 pub struct Config {

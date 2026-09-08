@@ -29,11 +29,11 @@ fn help_succeeds() {
 }
 
 #[test]
-fn help_lists_state_command() {
+fn help_lists_doctor_command() {
     pc().arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("state"));
+        .stdout(predicate::str::contains("doctor"));
 }
 
 #[test]
@@ -41,43 +41,5 @@ fn version_succeeds() {
     pc().arg("--version").assert().success();
 }
 
-#[test]
-fn missing_credentials_fails_with_hint() {
-    pc().arg("state")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("PC_CLIENT_ID"))
-        .stderr(predicate::str::contains("PC_TOKEN"));
-}
-
-#[test]
-fn client_id_without_secret_fails() {
-    pc().arg("--client-id")
-        .arg("cid")
-        .arg("state")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("PC_CLIENT_SECRET"));
-}
-
-#[test]
-fn client_secret_without_id_fails() {
-    pc().arg("--client-secret")
-        .arg("secret")
-        .arg("state")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("PC_CLIENT_ID"));
-}
-
-#[test]
-fn invalid_base_url_fails() {
-    pc().arg("--base-url")
-        .arg("not-a-url")
-        .arg("--token")
-        .arg("dummy")
-        .arg("state")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("http://"));
-}
+// 配置错误（缺凭据/凭据不成对/base-url 非法）不再以普通错误退出，而是由
+// `doctor` 命令输出结构化诊断报告；对应断言见 tests/offline/dynamic/doctor.rs。

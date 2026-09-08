@@ -93,6 +93,19 @@ impl PingCodeClient {
             }
         };
 
+        Self::with_token(&config.base_url, &token, config.verbose, config.dry_run)
+    }
+
+    /// 用已有的 Bearer token 构造客户端，不再触发 client-credentials 令牌换取。
+    ///
+    /// 供 `doctor` 命令使用：诊断流程需要把「换取令牌」作为一个独立检查项，
+    /// 换取成功后再用拿到的 token 构造探针客户端。
+    pub fn with_token(
+        base_url: &str,
+        token: &str,
+        verbose: bool,
+        dry_run: bool,
+    ) -> Result<Self, ClientError> {
         let http = reqwest::Client::builder()
             .user_agent(concat!("pc/", env!("CARGO_PKG_VERSION")))
             .default_headers(
@@ -107,9 +120,9 @@ impl PingCodeClient {
 
         Ok(Self {
             http,
-            base_url: config.base_url.clone(),
-            dry_run: config.dry_run,
-            verbose: config.verbose,
+            base_url: base_url.to_string(),
+            dry_run,
+            verbose,
         })
     }
 
@@ -407,7 +420,9 @@ fn percent_encode(input: &str) -> String {
 /// 通过 OAuth2 客户端凭据模式（client_credentials）换取企业令牌。
 ///
 /// 端点：`GET /v1/auth/token?grant_type=client_credentials&client_id=...&client_secret=...`
-async fn fetch_enterprise_token(
+///
+/// `pub(crate)`：供 `doctor` 命令把令牌换取作为独立检查项单独调用。
+pub(crate) async fn fetch_enterprise_token(
     base_url: &str,
     client_id: &str,
     client_secret: &str,
