@@ -20,6 +20,30 @@
 
 单测：`cargo test`；单个集成测试：`cargo test --test cli <test_name>`。
 
+## 分支工作流（branch protection）
+
+main 分支受 branch protection 保护，**禁止直接在 main 上修改文件、提交或推送**。
+
+**开始工作前**，按顺序执行：
+
+1. **确认已切换到 main 分支**（`git rev-parse --abbrev-ref HEAD` 输出 `main`）。当前不在 main 时不要自行切换，先停下向用户说明并等待确认。
+2. **确认工作区干净**（`git status --porcelain` 无输出）。存在未提交/未跟踪改动时先停下，让用户决定如何处理（提交、stash 或丢弃），不要擅自处置。
+3. **同步 main**：`git fetch origin`，确认本地 main 与 `origin/main` 一致；落后时 `git pull --ff-only`，失败则停下问用户。
+4. **创建新分支**：基于最新 main 用 `git checkout -b <branch>` 创建工作分支。分支名由 agent 按任务内容自动生成（kebab-case 英文，建议带类型前缀，如 `feat/pjm-workitem-update`、`fix/doctor-token-redaction`、`docs/agents-branch-workflow`），但**必须先把建议的分支名告知用户并征得确认**，用户同意后才创建。
+
+**工作期间**：
+
+5. **所有代码修改与提交都在该工作分支上进行**；任务完成前不要切回 main。
+6. **任何切换分支的操作**（`git checkout` / `git switch`）都必须**先征得用户确认**。需要临时存放改动才能切换时（如紧急任务），先向用户说明再 `git stash push -m "<说明>"`，不要直接丢弃改动。
+7. **不主动提交或推送**：除非用户明确要求，不执行 `git commit` / `git push`。提交前先运行 `git status` 与 `git diff` 检查改动范围，只暂存与本任务相关的文件，不把无关改动混入提交。
+8. **提交前必须跑验证**：`./scripts/test.sh`（fmt → clippy → 测试，见「验证命令」）全绿后再提交；commit message 遵循下方「提交信息规范」。
+9. **危险操作一律先确认**：`git reset --hard`、`git checkout -- <file>` / `git restore`、`git clean -fd`、`git stash drop`、对已推送历史的 rebase/amend，以及任何 `git push --force` / `--force-with-lease`，执行前必须向用户说明影响并征得确认；**任何情况下都不得对 main 强制推送或强推覆盖他人提交**。
+
+**收尾**：
+
+10. **推送与开 PR 需确认**：工作完成并验证通过后，经用户确认 push 工作分支（首次 `git push -u origin <branch>`）并用 `gh pr create` 开 PR（base 为 main）；PR 标题遵循 Conventional Commits（CI 会校验 PR 内全部 commit，见「提交信息规范」）。
+11. **PR 合并后清理**：合并后经用户确认切回 main、`git pull --ff-only` 同步，并删除本地与远端工作分支（`git branch -d <branch>`、`git push origin --delete <branch>`）。
+
 ## 提交信息规范
 
 所有 commit message 必须符合 [Conventional Commits](https://www.conventionalcommits.org/)：`<type>[optional scope]: <description>`。
