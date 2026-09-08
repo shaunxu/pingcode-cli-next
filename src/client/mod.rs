@@ -1,6 +1,8 @@
+use std::time::Instant;
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 mod error;
 
@@ -15,6 +17,7 @@ pub struct PingCodeClient {
     http: reqwest::Client,
     base_url: String,
     dry_run: bool,
+    verbose: bool,
 }
 
 /// `/v1/auth/token` 响应
@@ -77,7 +80,15 @@ impl PingCodeClient {
                 Credentials::Client {
                     client_id,
                     client_secret,
-                } => fetch_enterprise_token(&config.base_url, client_id, client_secret).await?,
+                } => {
+                    fetch_enterprise_token(
+                        &config.base_url,
+                        client_id,
+                        client_secret,
+                        config.verbose,
+                    )
+                    .await?
+                }
                 Credentials::Anonymous => "dry-run".to_string(),
             }
         };
@@ -98,6 +109,7 @@ impl PingCodeClient {
             http,
             base_url: config.base_url.clone(),
             dry_run: config.dry_run,
+            verbose: config.verbose,
         })
     }
 
@@ -204,6 +216,7 @@ impl PingCodeClient {
             return Ok(serde_json::from_value(Value::Null)?);
         }
 
+        // 先构建 multipart 表单，以便 verbose 日志能输出实际的 Content-Type（含 boundary）。
         let mut multipart = reqwest::multipart::Form::new();
         for field in fields {
             match field {
@@ -222,8 +235,18 @@ impl PingCodeClient {
             }
         }
 
-        let resp = self.http.post(&url).multipart(multipart).send().await?;
-        handle(resp).await
+        let boundary = multipart.boundary().to_string();
+        let req = self.http.post(&url).multipart(multipart);
+        if self.verbose {
+            // multipart 不打印文件内容，Body 以 JSON 摘要列出每个字段的名称与文件元信息。
+            let content_type = format!("multipart/form-data; boundary={boundary}");
+            let headers = request_headers_json(Some(&content_type));
+            output::log_http_request("POST", &url, &headers, Some(&multipart_body(fields)));
+        }
+
+        let started = Instant::now();
+        let resp = req.send().await?;
+        handle(resp, self.verbose, &url, started).await
     }
 
     /// 对 `{base_url}{path}` 发起带 JSON 请求体的 DELETE 请求。
@@ -259,13 +282,80 @@ impl PingCodeClient {
             return Ok(serde_json::from_value(Value::Null)?);
         }
 
-        let mut req = self.http.request(method, &url);
+        let content_type = body.map(|_| "application/json");
+        let mut req = self.http.request(method.clone(), &url);
         if let Some(body) = body {
             req = req.json(body);
         }
+        if self.verbose {
+            let headers = request_headers_json(content_type);
+            output::log_http_request(method.as_str(), &url, &headers, body);
+        }
+
+        let started = Instant::now();
         let resp = req.send().await?;
-        handle(resp).await
+        handle(resp, self.verbose, &url, started).await
     }
+}
+
+/// 构造 verbose 日志中的请求头 JSON。
+///
+/// `content_type` 为 `Some` 时额外带上 Content-Type（JSON 请求 / multipart 上传）；
+/// `Authorization` 统一脱敏为 `Bearer ***`，不泄漏令牌。
+fn request_headers_json(content_type: Option<&str>) -> Value {
+    let mut headers = serde_json::Map::new();
+    headers.insert("authorization".to_string(), json!("Bearer ***"));
+    headers.insert(
+        "user-agent".to_string(),
+        json!(concat!("pc/", env!("CARGO_PKG_VERSION"))),
+    );
+    if let Some(content_type) = content_type {
+        headers.insert("content-type".to_string(), json!(content_type));
+    }
+    Value::Object(headers)
+}
+
+/// 将响应头收集为 JSON（同名头聚合为数组；值非 ASCII/UTF-8 时跳过）。
+fn response_headers_json(headers: &reqwest::header::HeaderMap) -> Value {
+    let mut map = serde_json::Map::new();
+    for (name, value) in headers {
+        let Ok(text) = value.to_str() else {
+            continue;
+        };
+        map.entry(name.as_str().to_string())
+            .and_modify(|existing| match existing {
+                Value::Array(items) => items.push(json!(text)),
+                Value::String(first) => {
+                    *existing = json!([std::mem::take(first), text]);
+                }
+                _ => {}
+            })
+            .or_insert(json!(text));
+    }
+    Value::Object(map)
+}
+
+/// 生成 multipart 表单的 JSON 摘要（verbose 日志 Body 段用）：只列字段名与文件元信息，不含文件内容。
+fn multipart_body(fields: &[MultipartField<'_>]) -> Value {
+    let parts: Vec<Value> = fields
+        .iter()
+        .map(|field| match field {
+            MultipartField::Text(name, value) => {
+                json!({ "field": name, "type": "text", "value": value })
+            }
+            MultipartField::File {
+                name,
+                file_name,
+                bytes,
+            } => json!({
+                "field": name,
+                "type": "file",
+                "file_name": file_name,
+                "bytes": bytes.len(),
+            }),
+        })
+        .collect();
+    json!({ "multipart_fields": parts })
 }
 
 /// 将 JSON object 编码为 `application/x-www-form-urlencoded` 查询字符串。
@@ -321,12 +411,29 @@ async fn fetch_enterprise_token(
     base_url: &str,
     client_id: &str,
     client_secret: &str,
+    verbose: bool,
 ) -> Result<String, ClientError> {
     let http = reqwest::Client::builder()
         .user_agent(concat!("pc/", env!("CARGO_PKG_VERSION")))
         .build()?;
 
     let url = format!("{base_url}/v1/auth/token");
+    let full_url = format!(
+        "{url}?grant_type=client_credentials&client_id={}&client_secret={}",
+        percent_encode(client_id),
+        percent_encode(client_secret),
+    );
+
+    let logged_url = redact_query_secret(&full_url);
+    if verbose {
+        // 令牌请求的 query 中包含 client_secret，日志里必须脱敏；该请求不携带 Authorization 头。
+        let headers = json!({
+            "user-agent": concat!("pc/", env!("CARGO_PKG_VERSION")),
+        });
+        output::log_http_request("GET", &logged_url, &headers, None);
+    }
+
+    let started = Instant::now();
     let resp = http
         .get(&url)
         .query(&[
@@ -335,15 +442,98 @@ async fn fetch_enterprise_token(
             ("client_secret", client_secret),
         ])
         .send()
-        .await?;
+        .await
+        .map_err(|err| ClientError::HttpRedacted {
+            // reqwest 错误消息会回显完整 URL（query 中含 client_secret），必须脱敏后再向上传播。
+            message: redact_secret_in_text(&err.to_string(), client_secret),
+        })?;
 
-    let token: TokenResponse = handle(resp).await?;
+    let status = resp.status();
+    let resp_headers = response_headers_json(resp.headers());
+    let body = resp.text().await?;
+    if verbose {
+        // 响应体含 access_token，同样脱敏后再打印。
+        output::log_http_response(
+            status.as_u16(),
+            &logged_url,
+            started.elapsed().as_millis(),
+            &resp_headers,
+            &redact_token_body(&body),
+        );
+    }
+
+    if !status.is_success() {
+        return Err(ClientError::Api {
+            status: status.as_u16(),
+            body,
+        });
+    }
+
+    let token: TokenResponse = serde_json::from_str(&body)?;
     Ok(token.access_token)
 }
 
-async fn handle<T: DeserializeOwned>(resp: reqwest::Response) -> Result<T, ClientError> {
+/// 将 URL query 中的 `client_secret` 值替换为 `***`（verbose 日志脱敏）。
+fn redact_query_secret(url: &str) -> String {
+    let Some((base, query)) = url.split_once('?') else {
+        return url.to_string();
+    };
+    let redacted = query
+        .split('&')
+        .map(|pair| {
+            if pair
+                .split('=')
+                .next()
+                .map(|k| matches!(k, "client_secret"))
+                .unwrap_or(false)
+            {
+                "client_secret=***".to_string()
+            } else {
+                pair.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("&");
+    format!("{base}?{redacted}")
+}
+
+/// 将任意文本中出现的 `client_secret` 明文值替换为 `***`（用于 reqwest 错误消息脱敏）。
+fn redact_secret_in_text(text: &str, client_secret: &str) -> String {
+    text.replace(client_secret, "***")
+}
+
+/// 将响应体 JSON 中的 `access_token` 字段值掩码为 `***`（解析失败则原样返回）。
+fn redact_token_body(body: &str) -> String {
+    match serde_json::from_str::<Value>(body) {
+        Ok(Value::Object(mut map)) => {
+            if let Some(value) = map.get_mut("access_token") {
+                *value = Value::String("***".to_string());
+            }
+            serde_json::to_string_pretty(&Value::Object(map)).unwrap_or_else(|_| body.to_string())
+        }
+        _ => body.to_string(),
+    }
+}
+
+async fn handle<T: DeserializeOwned>(
+    resp: reqwest::Response,
+    verbose: bool,
+    url: &str,
+    started: Instant,
+) -> Result<T, ClientError> {
     let status = resp.status();
+    let headers = response_headers_json(resp.headers());
     let body = resp.text().await?;
+
+    if verbose {
+        output::log_http_response(
+            status.as_u16(),
+            url,
+            started.elapsed().as_millis(),
+            &headers,
+            &body,
+        );
+    }
 
     if !status.is_success() {
         return Err(ClientError::Api {

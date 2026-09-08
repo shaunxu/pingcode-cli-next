@@ -37,7 +37,7 @@ brew install pc
 | `--client-id`     | `PC_CLIENT_ID`         | 应用 Client ID（客户端凭据模式）                 |
 | `--client-secret` | `PC_CLIENT_SECRET`     | 应用 Client Secret（客户端凭据模式）             |
 | `--token`         | `PC_TOKEN`             | 直接指定访问令牌，跳过客户端凭据换取             |
-| `-v/--verbose`    | -                      | 输出调试信息                                     |
+| `-v/--verbose`    | -                      | 把每个 HTTP 请求/响应（UTC 时间戳、方法、URL、Headers、Body、状态码、耗时）打印到 stderr 用于排查问题；敏感信息自动脱敏 |
 | `--dry-run`       | -                      | 只打印将要发出的 HTTP 请求，不实际发送；跳过鉴权，可离线运行 |
 
 凭据可通过 shell 环境变量持久化（例如写入 `~/.zshrc` / `~/.bashrc`）：
@@ -71,7 +71,33 @@ cat payload.json | pc pjm workitem create --data @-
 
 # 离线预览请求：不换令牌、不发网络，无需凭据
 pc --dry-run pjm workitem create --data '{"project_id":"p1","type_id":"t1","title":"x"}'
+
+# 排查问题：打印完整 HTTP 请求/响应（日志在 stderr，结果 JSON 在 stdout，互不干扰）
+pc -v pjm workitem list --project-id <项目ID>
 ```
+
+`-v/--verbose` 输出到 stderr，格式如下（Headers 与 Body 均为 pretty JSON）：
+
+```
+[2026-09-08T07:56:27.277Z] REQUEST POST https://api.pingcode.com/v1/pjm/workitems
+Headers
+{
+  "authorization": "Bearer ***",
+  "content-type": "application/json",
+  "user-agent": "pc/1.0.1"
+}
+Body
+{
+  ...请求体...
+}
+[2026-09-08T07:56:27.410Z] RESPONSE 200 https://api.pingcode.com/v1/pjm/workitems (133ms)
+Headers
+{ ...响应头... }
+Body
+{ ...响应体... }
+```
+
+日志中的敏感信息会自动脱敏：Authorization 头显示为 `Bearer ***`，令牌换取请求 URL 中的 `client_secret` 与响应中的 `access_token` 掩码为 `***`，multipart 上传只列字段名/文件名/字节数而不打印文件内容。
 
 少数命令不遵循三级模式（如 `state`），作为自由命令直接挂在顶层：
 

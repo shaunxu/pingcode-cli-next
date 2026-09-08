@@ -17,9 +17,5 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let config = Config::from_cli(&cli)?;
 
-    if cli.verbose {
-        eprintln!("verbose mode enabled");
-    }
-
     commands::run(cli.command, &config).await
 }

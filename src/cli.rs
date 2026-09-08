@@ -25,7 +25,7 @@ pub struct Cli {
     #[arg(long, env = "PC_CLIENT_SECRET", global = true)]
     pub client_secret: Option<String>,
 
-    /// Increase verbosity of log output
+    /// Print every HTTP request and response (with timestamps and elapsed time) to stderr for troubleshooting
     #[arg(short, long, global = true)]
     pub verbose: bool,
 

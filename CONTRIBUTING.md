@@ -71,8 +71,8 @@ src/
   main.rs          # 入口：解析 CLI → Config::from_cli → commands::run
   cli.rs           # clap 命令行定义（全局参数 + 顶层子命令）
   config.rs        # 配置加载（命令行参数 + 环境变量合并）
-  output.rs        # 输出与 --data 输入辅助（JSON 打印、@file/@- 读取、dry-run 预览）
-  client/          # PingCode REST 客户端封装（鉴权 + get/post/patch/put/delete + dry-run）
+  output.rs        # 输出与 --data 输入辅助（JSON 打印、@file/@- 读取、dry-run 预览、verbose HTTP 日志）
+  client/          # PingCode REST 客户端封装（鉴权 + get/post/patch/put/delete + dry-run/verbose 日志）
   commands/
     mod.rs         # 顶层分发：三级命令 → 模块目录；自由命令 → dynamic/
     context.rs     # Ctx：命令执行上下文（client + config）
