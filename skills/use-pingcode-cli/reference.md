@@ -1,7 +1,7 @@
 # 参考：使用 `pc`（PingCode Open API CLI）
 
 配合 SKILL.md 使用。本文件自包含，**在任意仓库/目录都适用**——调用的是已安装的 `pc`。
-每次执行结束把新学到的用法/字段/排错经验回写到这里（SKILL.md 第 7 步）。
+本文件随 skill 版本分发，**只读**：不要在运行时回写或追加内容（更新 skill 会覆盖）。
 
 ## 安装与调用
 
@@ -67,6 +67,11 @@
 - 匹配到 0 或 >1 时，列候选让用户确认，不要猜。
 
 ideas（需求）、tickets（工单）、testcases（用例）等的创建链路与工作项同构：先解析父级 id（产品/测试库），再 `create --data`，字段看各自 `--help` 的 Doc。
+
+### 创建测试库（testhub library）
+- `pc testhub library create --data '{"name":"X","identifier":"ABC","description":"..."}'`
+- **`identifier` 必填**（库前缀，大写字母/数字，全企业唯一）；缺失返回 400 `code 100008 'identifier' is a required field`。
+- `testhub library list` 不支持 `--page-size`/`--page-index` 参数（固定返回，实测 page_size=30）。
 
 ## HTTP 错误对照（非 2xx 时 CLI 打印 status + body）
 
