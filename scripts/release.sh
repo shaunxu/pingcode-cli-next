@@ -66,6 +66,25 @@ new_version="$(printf '%s' "$preview" | python3 -c 'import json,sys; print(json.
 tag="v${new_version}"
 branch="release/${tag}"
 
+# 防护：Cargo.toml 版本领先最新 tag 时，说明 release PR 已合并但 tag 没打上
+# （通常是 CI 推 tag 失败）。此时再 prepare 只会生成重复 PR，且 changelog
+# hook 会因找不到基线 tag 报隐晦错误——应直接补发缺失的 tag。
+manifest_version="$(python3 -c '
+import re, sys
+match = re.search(r"^version\s*=\s*\"([^\"]+)\"", open(sys.argv[1]).read(), re.M)
+print(match.group(1) if match else "")
+' "$repo_root/Cargo.toml")"
+tag_version="$(printf '%s' "$preview" | python3 -c 'import json,sys; v=json.load(sys.stdin)["current_version"]; print(v or "")')"
+if [[ -n "$tag_version" && "$manifest_version" != "$tag_version" ]]; then
+  echo "error: Cargo.toml is already at ${manifest_version}, but tag v${manifest_version} does not exist" >&2
+  echo "       (a release PR for this version merged, but the tag push failed)." >&2
+  echo "Publish the missing tag instead of preparing another release PR:" >&2
+  echo "  - Actions tab -> 'Release Tag' workflow -> Run workflow (recommended), or" >&2
+  echo "  - git tag -a v${manifest_version} -m 'chore(release): v${manifest_version}'" >&2
+  echo "    git push origin v${manifest_version}" >&2
+  exit 1
+fi
+
 echo "Releasing ${tag}"
 echo "----------------------------------------"
 printf '%s\n' "$preview"
