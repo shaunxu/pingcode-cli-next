@@ -1,19 +1,27 @@
-# 两阶段发布的第二阶段：release PR 合并到 main 后，按 Cargo.toml 中的版本
+# 两阶段发布的第二阶段：release PR 合并到 main 后，为 Cargo.toml 中的版本
 # 创建并推送 annotated tag vX.Y.Z；tag 推送触发 cargo-dist 生成的
 # release.yml（三平台构建、GitHub Release、安装脚本、Homebrew tap）。
 #
-# 注意：必须用 PAT（secret RELEASE_PAT）推 tag——用 Actions 默认 GITHUB_TOKEN
-# 推送的 tag 不会触发 on: push: tags 的其他 workflow（GitHub 防事件递归规则）。
-# RELEASE_PAT 配置：fine-grained token，仅授权本仓库，Contents: Read and write。
+# 只有 head 提交是 release 提交（提交消息含 "chore(release): vX.Y.Z"，
+# squash / rebase / merge commit 三种合并方式均覆盖）时才打 tag；普通
+# PR 合并直接跳过。也支持 workflow_dispatch 手动触发（用于补发未打的 tag）。
 #
-# 幂等：版本对应的 tag 已存在时直接成功（普通 feat/fix 合入 main 时如此），
-# 因此本 workflow 可以安全地在每次 main push 时运行，也可以直接 re-run。
+# 注意一：必须用 PAT（secret RELEASE_PAT）推 tag——用 Actions 默认
+# GITHUB_TOKEN 推送的 tag 不会触发 on: push: tags 的其他 workflow
+# （GitHub 防事件递归规则）。RELEASE_PAT：fine-grained token，仅授权本
+# 仓库，Contents: Read and write。
+# 注意二：checkout@v4 会把 GITHUB_TOKEN 持久化为 http.extraHeader，其优先级
+# 高于 push URL 中内嵌的凭据，不主动移除会以 github-actions[bot] 身份推送
+# 而被 403 拒绝。
+#
+# 幂等：版本对应的 tag 已存在时直接成功；失败后可 re-run 或手动 dispatch。
 name: Release Tag
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -31,29 +39,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve version from Cargo.toml
-        id: version
-        run: |
-          version="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["package"]["version"])')"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "Resolved version: ${version}"
-
       - name: Create and push tag
         env:
           RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
         run: |
           set -euo pipefail
-          tag="v${{ steps.version.outputs.version }}"
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["package"]["version"])')"
+          tag="v${version}"
+          echo "Resolved version: ${version}"
+
           if git ls-remote --tags origin "refs/tags/${tag}" | grep -q .; then
             echo "Tag ${tag} already exists; nothing to do."
             exit 0
           fi
+
+          # 仅 release 提交（chore(release): vX.Y.Z）打 tag；普通合并跳过。
+          # workflow_dispatch 是显式手动操作，视为补发，跳过此门禁。
+          if [[ "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            if ! git log -1 --pretty=%B | grep -Fq "chore(release): ${tag}"; then
+              echo "Head commit is not the release commit for ${tag} (no 'chore(release): ${tag}' in commit message); skipping tag creation."
+              exit 0
+            fi
+          fi
+
           if [[ -z "${RELEASE_PAT}" ]]; then
             echo "error: secret RELEASE_PAT is not configured; cannot push tag ${tag}" >&2
             echo "Create a fine-grained PAT (Contents: Read and write on this repo) and add it" >&2
             echo "as a repository secret named RELEASE_PAT." >&2
             exit 1
           fi
+
+          # 移除 checkout 持久化的 GITHUB_TOKEN extraHeader，否则 push URL 中
+          # 的 RELEASE_PAT 不会生效（会以 github-actions[bot] 身份推送并 403）。
+          git config --local --unset-all "http.https://github.com/.extraheader" || true
+
           git config user.name "github-actions[release-tag]"
           git config user.email "github-actions[release-tag]@users.noreply.github.com"
           git tag -a "${tag}" -m "chore(release): ${tag}"

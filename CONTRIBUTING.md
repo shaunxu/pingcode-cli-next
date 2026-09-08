@@ -110,7 +110,7 @@ tools/             # 发版工具（release.py）与在线文档检索脚本（s
 
 1. 本地跑 `scripts/release.sh`（本地需先 `cargo install cargo-release cargo-dist` 且 `gh auth login`）：脚本校验在 main 上、工作区干净、与 `origin/main` 同步，然后建分支 `release/vX.Y.Z`，由 cargo-release 完成 bump、CHANGELOG、提交（不打 tag、不 push），最后 push 分支并用 `gh` 开标题为 `chore(release): vX.Y.Z` 的 PR。
 2. PR review/approve 后合并（建议 squash merge）。
-3. merge 到 main 后 `.github/workflows/release-tag.yml` 自动创建并推送 annotated tag `vX.Y.Z`，tag 推送触发 cargo-dist 构建分发。**该 workflow 需要仓库 secret `RELEASE_PAT`**（fine-grained PAT，仅授权本仓库、Contents: Read and write）——用 Actions 默认 `GITHUB_TOKEN` 推的 tag 不会触发其他 workflow。tag 已存在时 workflow 幂等直接成功，失败可在 Actions 页面 re-run。一次性配置细节见 [AGENTS.md](AGENTS.md) 的「发布」一节。
+3. merge 到 main 后 `.github/workflows/release-tag.yml` 自动创建并推送 annotated tag `vX.Y.Z`，tag 推送触发 cargo-dist 构建分发。该 workflow 有两道门禁：tag 已存在则幂等成功；head 提交不是 release 提交（消息不含 `chore(release): vX.Y.Z`）则跳过——普通 feat/fix PR 合并不打 tag。失败可在 Actions 页面 re-run，或用 Actions 的 **Run workflow**（`workflow_dispatch`）手动补发。**该 workflow 需要仓库 secret `RELEASE_PAT`**（fine-grained PAT，仅授权本仓库、Contents: Read and write）——用 Actions 默认 `GITHUB_TOKEN` 推的 tag 不会触发其他 workflow。一次性配置细节见 [AGENTS.md](AGENTS.md) 的「发布」一节。
 
 工具链分四层：
 
