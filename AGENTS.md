@@ -31,19 +31,24 @@
 
 ## 发布（维护者）
 
-发布是**项目级工具**，不是 `pc` 的子命令（类似 `npm run release`），用 `scripts/release.sh` 触发（本地需先 `cargo install cargo-release cargo-dist`）：
+发布是**项目级工具**，不是 `pc` 的子命令（类似 `npm run release`）。main 受 branch protection 保护、不能直接 push，因此发布是**两阶段**：本地 prepare 出 release PR → PR 合并后 CI 自动打 tag 触发构建分发。第一阶段用 `scripts/release.sh` 触发（本地需先 `cargo install cargo-release cargo-dist` 且 `gh auth login`）：
 
 ```bash
 ./scripts/release.sh --dry-run        # 仅预览新版本号与 CHANGELOG 条目，零副作用（输出 JSON）
-./scripts/release.sh                  # 自动按 Conventional Commits 计算 Semver 并发布
+./scripts/release.sh                  # 自动按 Conventional Commits 计算 Semver，建 release 分支并开 PR
 ./scripts/release.sh --version 0.2.0  # 手动指定版本号
 ```
 
-- 发版工具链分三层：
-  - `tools/release.py`（纯 Python 3 标准库，与 `tools/search_nexus_docs.py` 同风格，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`）：`compute` 子命令取最近 git tag、解析基线后的 commits 定版本（0.x 阶段 feat/BREAKING→minor、fix/perf→patch；1.0+ 按标准 Semver），支持 `--version` 手动指定与 `--dry-run` 预览；`changelog` 子命令是 cargo-release 的 pre-release-hook，依据 `PREV_VERSION..HEAD` 的提交重写 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）。
-  - [cargo-release](https://github.com/crate-ci/cargo-release)（配置在根目录 `release.toml`）：`publish = false`（不上 crates.io）、bump `Cargo.toml`/`Cargo.lock`、运行 changelog hook、commit `chore(release): vX.Y.Z`、打 annotated tag `vX.Y.Z`、push。**不要设 `tag-prefix = "v"`**：默认 tag-name 是 `{{prefix}}v{{version}}`，根 crate prefix 为空，设了会得到 `vvX.Y.Z`。
+1. **本地 prepare**（`scripts/release.sh` 无参数即此行为）：校验当前在 main、工作区干净、本地 main 与 `origin/main` 同步、目标 tag 不存在 → 建分支 `release/vX.Y.Z` → 跑 `cargo release <version> --execute --no-tag --no-push --allow-branch '*'`（bump `Cargo.toml`/`Cargo.lock`、pre-release-hook 重写 CHANGELOG.md、提交 `chore(release): vX.Y.Z`；不打 tag、不 push；失败时自动清理未 push 的本地分支）→ push 分支并用 `gh pr create` 开标题为 `chore(release): vX.Y.Z` 的 PR。
+2. **GitHub 上 review/approve/merge PR**（建议 squash merge）。branch protection 的 "require branches to be up to date" 可防止 PR 期间 main 又进提交导致 CHANGELOG 漏条目。
+3. **CI 自动发版**：merge 到 main 触发 `.github/workflows/release-tag.yml`（**手写**文件，可自由修改）——从 `Cargo.toml` 读版本，tag `vX.Y.Z` 已存在则直接成功（幂等；普通 feat/fix 合入 main 时都走此路径），否则创建 annotated tag 并通过 `RELEASE_PAT` secret 推送。**必须用 PAT**：Actions 默认 `GITHUB_TOKEN` 推送的 tag 不会触发 `on: push: tags` 的其他 workflow（GitHub 防事件递归规则）。`RELEASE_PAT` 是 fine-grained token（仅授权本仓库、Contents: Read and write），配在仓库 Settings → Secrets and variables → Actions。tag 推送后 cargo-dist 的 release workflow 接管构建分发；tag job 失败可在 Actions 页面直接 re-run（幂等，不重复打 tag）。
+
+- 发版工具链分四层：
+  - `tools/release.py`（纯 Python 3 标准库，与 `tools/search_nexus_docs.py` 同风格，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`）：`compute` 子命令取最近 git tag、解析基线后的 commits 定版本（0.x 阶段 feat/BREAKING→minor、fix/perf→patch；1.0+ 按标准 Semver），支持 `--version` 手动指定；`changelog` 子命令是 cargo-release 的 pre-release-hook，依据 `PREV_VERSION..HEAD` 的提交重写 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）。
+  - [cargo-release](https://github.com/crate-ci/cargo-release)（配置在根目录 `release.toml`）：`publish = false`（不上 crates.io）、`tag = false` / `push = false`（打 tag 与推送交给 CI）、bump `Cargo.toml`/`Cargo.lock`、运行 changelog hook、commit `chore(release): vX.Y.Z`；`allow-branch = ["main"]` 由 release.sh 在 release 分支上用 `--allow-branch '*'` 覆盖。
+  - `.github/workflows/release-tag.yml`：release PR 合并后创建 annotated tag `vX.Y.Z` 并用 `RELEASE_PAT` 推送（见上方第 3 步）。
   - [cargo-dist](https://github.com/axodotdev/cargo-dist)（配置在根目录 `dist-workspace.toml`，workflow 由 `dist generate` 生成到 `.github/workflows/release.yml`，**不要手改该文件**）：tag 推送后在三平台（`x86_64-unknown-linux-gnu`、`aarch64-apple-darwin`、`x86_64-pc-windows-msvc`）编译，产物为 `.tar.xz`/`.zip` + `.sha256`，创建 GitHub Release、发布 `pc-installer.sh`/`pc-installer.ps1` 一键安装脚本，并把 Homebrew formula 推送到独立 tap 仓库 `shaunxu/homebrew-tap`（用 secret `HOMEBREW_TAP_TOKEN`；`tap`/`publish-jobs` 配在 `dist-workspace.toml`）。
-- 改了 `dist-workspace.toml` 后必须运行 `dist generate` 重新生成 workflow。
+- 改了 `dist-workspace.toml` 后必须运行 `dist generate` 重新生成 workflow（`release-tag.yml` 是手写的，不受影响）。
 - 用户安装方式见 README「安装」：shell/PowerShell 一键脚本、`brew tap shaunxu/tap && brew install pc`、或直接下载 Release 资产。
 
 ## 代码约定

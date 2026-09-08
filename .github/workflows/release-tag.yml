@@ -1,0 +1,61 @@
+# 两阶段发布的第二阶段：release PR 合并到 main 后，按 Cargo.toml 中的版本
+# 创建并推送 annotated tag vX.Y.Z；tag 推送触发 cargo-dist 生成的
+# release.yml（三平台构建、GitHub Release、安装脚本、Homebrew tap）。
+#
+# 注意：必须用 PAT（secret RELEASE_PAT）推 tag——用 Actions 默认 GITHUB_TOKEN
+# 推送的 tag 不会触发 on: push: tags 的其他 workflow（GitHub 防事件递归规则）。
+# RELEASE_PAT 配置：fine-grained token，仅授权本仓库，Contents: Read and write。
+#
+# 幂等：版本对应的 tag 已存在时直接成功（普通 feat/fix 合入 main 时如此），
+# 因此本 workflow 可以安全地在每次 main push 时运行，也可以直接 re-run。
+name: Release Tag
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version from Cargo.toml
+        id: version
+        run: |
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["package"]["version"])')"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${version}"
+
+      - name: Create and push tag
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.version.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/${tag}" | grep -q .; then
+            echo "Tag ${tag} already exists; nothing to do."
+            exit 0
+          fi
+          if [[ -z "${RELEASE_PAT}" ]]; then
+            echo "error: secret RELEASE_PAT is not configured; cannot push tag ${tag}" >&2
+            echo "Create a fine-grained PAT (Contents: Read and write on this repo) and add it" >&2
+            echo "as a repository secret named RELEASE_PAT." >&2
+            exit 1
+          fi
+          git config user.name "github-actions[release-tag]"
+          git config user.email "github-actions[release-tag]@users.noreply.github.com"
+          git tag -a "${tag}" -m "chore(release): ${tag}"
+          git push "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" "${tag}"
+          echo "Pushed ${tag}; the cargo-dist release workflow will now build and publish."
