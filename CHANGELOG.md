@@ -5,6 +5,18 @@
 
 
 
+
+## [v0.5.0] - 2026-09-08
+
+### Features
+
+- add permission and expression commands (c314cf5)
+- add comments write ops and entity properties (52b4783)
+
+### Bug Fixes
+
+- correct scoped metadata and user group rest paths (8f4abe4)
+
 ## [v0.4.0] - 2026-09-04
 
 ### Features
