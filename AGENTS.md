@@ -139,10 +139,10 @@ Live 测试（`tests/live.rs` + `tests/live/`）对真实 PingCode Open API 发�
 
 **先读代码注释，不要先搜索**：每个命令的文档地址已经写在代码里——操作文件 `run` 函数的 doc comment 中有 `文档：https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`，资源/模块 `mod.rs` 的枚举变体 doc comment 中有同一 URL（`Docs: <url>`，约定见上方"代码约定"）。实现或修改命令时，直接打开注释中的 URL 核对接口细节即可（可用 webfetch 直接抓取该页面），**无需**再检索。
 
-注释缺失、注释页面未覆盖所需细节、或不确定端点是否存在时，使用 **`search-pingcode-api-docs` skill**（本仓库通过 `.agents/skills/search-pingcode-api-docs` symlink 到 `skills/search-pingcode-api-docs/` 自动加载；也可用 `npx skills@latest add shaunxu/pingcode-cli-next --skill search-pingcode-api-docs` 装到任意仓库）。它自带纯标准库检索脚本 `skills/search-pingcode-api-docs/scripts/search_pingcode_docs.py`（抓取 sitemap 打分 → 下载页面提取 `<main>`），用法与规则（关键词必须英文、只采信 `restapi/pingcode/` 前缀结果、查不到不许编造）见该 skill 的 `SKILL.md`。直接运行：
+注释缺失、注释页面未覆盖所需细节、或不确定端点是否存在时，使用 **`search-pingcode-api-docs` skill**（位于 `.agents/skills/search-pingcode-api-docs/`，随仓库版本化、opencode 自动加载）。它自带纯标准库检索脚本 `.agents/skills/search-pingcode-api-docs/scripts/search_pingcode_docs.py`（抓取 sitemap 打分 → 下载页面提取 `<main>`），用法与规则（关键词必须英文、只采信 `restapi/pingcode/` 前缀结果、查不到不许编造）见该 skill 的 `SKILL.md`。直接运行：
 
 ```bash
-python3 skills/search-pingcode-api-docs/scripts/search_pingcode_docs.py "<英文关键词>" [--max-pages 3] [--max-snippet 600] [--json]
+python3 .agents/skills/search-pingcode-api-docs/scripts/search_pingcode_docs.py "<英文关键词>" [--max-pages 3] [--max-snippet 600] [--json]
 ```
 
 该脚本不属于构建/测试流程，`./scripts/test.sh` 不涉及它。
