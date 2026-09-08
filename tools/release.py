@@ -300,6 +300,14 @@ def cmd_changelog(_args: argparse.Namespace) -> int:
     repo = Path(os.environ.get("WORKSPACE_ROOT") or os.environ.get("CRATE_ROOT") or find_repo_root())
 
     baseline_tag = tag_for_version(prev_version) if prev_version else latest_tag(repo)
+    if baseline_tag:
+        existing = run_git(["tag", "--list", baseline_tag], cwd=repo).strip()
+        if not existing:
+            raise RuntimeError(
+                f"baseline tag {baseline_tag} does not exist; the previous release was "
+                "merged without tagging — publish the missing tag (Actions -> "
+                "'Release Tag' -> Run workflow) instead of preparing another release"
+            )
     commits = collect_commits(repo, baseline_tag)
     entry = render_changelog_entry(new_version, commits, today())
 
