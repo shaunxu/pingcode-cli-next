@@ -69,7 +69,7 @@ main 分支受 branch protection 保护，**禁止直接在 main 上修改文件
 4. **tag 缺失的兜底**：如果 release PR 已合并但 tag 没打上（CI 失败等），main 上 `Cargo.toml` 版本会领先最新 tag。此时**不要再跑 `scripts/release.sh`**——脚本检测到该状态会直接报错并提示补发 tag（changelog hook 对缺失基线 tag 也会报清晰错误），避免生成重复的 release PR。补发方式：Actions 页面 **Run workflow**（见第 3 步），或本地 `git tag -a vX.Y.Z -m "chore(release): vX.Y.Z" && git push origin vX.Y.Z`。
 
 - 发版工具链分四层：
-  - `tools/release.py`（纯 Python 3 标准库，与 `tools/search_nexus_docs.py` 同风格，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`）：`compute` 子命令取最近 git tag、解析基线后的 commits 定版本（0.x 阶段 feat/BREAKING→minor、fix/perf→patch；1.0+ 按标准 Semver），支持 `--version` 手动指定；`changelog` 子命令是 cargo-release 的 pre-release-hook，依据 `PREV_VERSION..HEAD` 的提交重写 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）。
+  - `tools/release.py`（纯 Python 3 标准库，单测为 `tools/test_release.py`：`python3 -m unittest tools/test_release.py -v`）：`compute` 子命令取最近 git tag、解析基线后的 commits 定版本（0.x 阶段 feat/BREAKING→minor、fix/perf→patch；1.0+ 按标准 Semver），支持 `--version` 手动指定；`changelog` 子命令是 cargo-release 的 pre-release-hook，依据 `PREV_VERSION..HEAD` 的提交重写 `CHANGELOG.md`（Keep a Changelog，只收录 feat/fix/perf 及 BREAKING）。
   - [cargo-release](https://github.com/crate-ci/cargo-release)（配置在根目录 `release.toml`）：`publish = false`（不上 crates.io）、`tag = false` / `push = false`（打 tag 与推送交给 CI）、bump `Cargo.toml`/`Cargo.lock`、运行 changelog hook、commit `chore(release): vX.Y.Z`；`allow-branch = ["main"]` 由 release.sh 在 release 分支上用 `--allow-branch '*'` 覆盖。
   - `.github/workflows/release-tag.yml`：release PR 合并后创建 annotated tag `vX.Y.Z` 并用 `RELEASE_PAT` 推送（见上方第 3 步）。
   - [cargo-dist](https://github.com/axodotdev/cargo-dist)（配置在根目录 `dist-workspace.toml`，workflow 由 `dist generate` 生成到 `.github/workflows/release.yml`，**不要手改该文件**）：tag 推送后在三平台（`x86_64-unknown-linux-gnu`、`aarch64-apple-darwin`、`x86_64-pc-windows-msvc`）编译，产物为 `.tar.xz`/`.zip` + `.sha256`，创建 GitHub Release、发布 `pc-installer.sh`/`pc-installer.ps1` 一键安装脚本，并把 Homebrew formula 推送到独立 tap 仓库 `shaunxu/homebrew-tap`（用 secret `HOMEBREW_TAP_TOKEN`；`tap`/`publish-jobs` 配在 `dist-workspace.toml`）。
@@ -137,27 +137,12 @@ Live 测试（`tests/live.rs` + `tests/live/`）对真实 PingCode Open API 发�
 
 需要确认 PingCode Open API 的端点路径、请求/响应字段、鉴权 scope、参数或版本行为时，**不要凭记忆或猜测编写代码**。
 
-**先读代码注释，不要先搜索**：每个命令的文档地址已经写在代码里——操作文件 `run` 函数的 doc comment 中有 `文档：https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`，资源/模块 `mod.rs` 的枚举变体 doc comment 中有同一 URL（`Docs: <url>`，约定见上方"代码约定"）。实现或修改命令时，直接打开注释中的 URL 核对接口细节即可（可用 webfetch 直接抓取该页面），**无需**再用搜索脚本找页面。
+**先读代码注释，不要先搜索**：每个命令的文档地址已经写在代码里——操作文件 `run` 函数的 doc comment 中有 `文档：https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`，资源/模块 `mod.rs` 的枚举变体 doc comment 中有同一 URL（`Docs: <url>`，约定见上方"代码约定"）。实现或修改命令时，直接打开注释中的 URL 核对接口细节即可（可用 webfetch 直接抓取该页面），**无需**再检索。
 
-只有以下情况才运行 `tools/search_nexus_docs.py` 在线检索（数据源：`https://developer.alpha.pingcode.live/sitemap.xml`）：
-
-- 代码注释里**没有**写文档 URL（注释缺失、或要新增的端点归属不明）。
-- 注释中的页面未覆盖所需细节（如折叠的嵌套数据结构、通用分页/约定），需要找其他相关页面。
-- 不确定某个端点是否存在、或不确定该调用哪个 REST 路径。
-- 任何本地代码与注释未覆盖、可能编造的 API 细节。
+注释缺失、注释页面未覆盖所需细节、或不确定端点是否存在时，使用 **`search-pingcode-api-docs` skill**（本仓库通过 `.agents/skills/search-pingcode-api-docs` symlink 到 `skills/search-pingcode-api-docs/` 自动加载；也可用 `npx skills@latest add shaunxu/pingcode-cli-next --skill search-pingcode-api-docs` 装到任意仓库）。它自带纯标准库检索脚本 `skills/search-pingcode-api-docs/scripts/search_pingcode_docs.py`（抓取 sitemap 打分 → 下载页面提取 `<main>`），用法与规则（关键词必须英文、只采信 `restapi/pingcode/` 前缀结果、查不到不许编造）见该 skill 的 `SKILL.md`。直接运行：
 
 ```bash
-# 在仓库根目录运行；纯标准库，无第三方依赖，不需要网络代理之外的任何配置
-python3 tools/search_nexus_docs.py "<英文关键词>" [--max-pages 3] [--max-snippet 600] [--json]
+python3 skills/search-pingcode-api-docs/scripts/search_pingcode_docs.py "<英文关键词>" [--max-pages 3] [--max-snippet 600] [--json]
 ```
 
-- 脚本流程：抓取 sitemap → 按 URL/标题/描述对关键词打分 → 下载排名靠前页面，提取 `<main>` 正文片段。**无本地缓存**，每次实时检索；无结果时退出码为 2。
-- **关键词必须用英文**：sitemap 中的 URL 路径是英文（如 `workitem`、`permissions`、`rest-api`），首轮打分依赖 URL 匹配，中文关键词命中率极低；返回的正文片段可以是中文。多词用空格分隔并加引号，例如：
-  ```bash
-  python3 tools/search_nexus_docs.py "work item rest api"
-  python3 tools/search_nexus_docs.py "project list" --max-pages 5
-  python3 tools/search_nexus_docs.py "oauth scope permissions" --json
-  ```
-- 检索后以返回结果中的**页面 URL 为依据**再动手写请求路径和反序列化结构体；查不到就如实说明，不要编造端点。
-- **只关注 URL 路径以 `restapi/pingcode/` 开头的结果**（如 `https://developer.alpha.pingcode.live/restapi/pingcode/getPjmProjects`）——这些才是 PingCode Open API 的 REST 端点页面。`restapi/nexus/...`（Nexus 扩展接口）、`reference/resource/...`（数据模型/扩展点参考）等其他前缀的结果与本 CLI 无关，命中后直接忽略，不要据其编写命令。
-- 该脚本不属于构建/测试流程，`./scripts/test.sh` 不涉及它。
+该脚本不属于构建/测试流程，`./scripts/test.sh` 不涉及它。
