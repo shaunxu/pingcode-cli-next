@@ -14,8 +14,9 @@ description: 通过已安装的 `pc`（PingCode Open API）命令行客户端完
 
 1. **预检 CLI 与鉴权。**
    - `command -v pc` 确认已安装；没有就按 `reference.md` 的安装方式提示用户（brew / 一键脚本 / cargo install），不要继续。
-   - 跑 `pc state` 验证鉴权与连通。失败则按 `reference.md` 判断是缺凭据还是网络/地址问题，给出**具体**配置方法（`PC_TOKEN` 或 `PC_CLIENT_ID`+`PC_CLIENT_SECRET`），并停下让用户处理。
-   - 完成标准：`pc state` 成功返回企业/用户信息。
+   - 跑 `pc doctor` 验证配置与连通。它在 stdout 输出结构化 JSON 报告：`ok` 为是否全部通过，`checks[]` 每项有稳定 `id`、`status`（pass/fail/warn/info/skipped），失败项的 `remediation.steps` 是可直接照做的修复步骤；退出码 0=通过、1=有检查失败、2=命令自身异常。
+   - 退出码非 0 时，读 `checks[]` 里 `status=fail` 的项（如 `credentials_present`/`credential_pair` 缺凭据、`base_url_format`/`base_url_reachable` 地址或网络问题、`token_exchange`/`api_auth` 凭据无效），把对应 `remediation.steps` 转述给用户并停下让其处理；鉴权类问题不要反复重试。
+   - 完成标准：`pc doctor` 退出码 0（`ok: true`），`identity.team` 有企业信息。
 
 2. **理解意图并发现命令（不臆造参数）。**
    - 把目标映射到 module/resource/operation（模块见 `reference.md`）。

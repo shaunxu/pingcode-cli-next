@@ -76,7 +76,7 @@ src/
   commands/
     mod.rs         # 顶层分发：三级命令 → 模块目录；自由命令 → dynamic/
     context.rs     # Ctx：命令执行上下文（client + config）
-    dynamic/       # 自由命令（不遵循三级模式，如 state）
+    dynamic/       # 自由命令（不遵循三级模式，如 doctor）
     pjm/           # 三级命令模块示例（项目管理）
       workitem/    #   资源：工作项；每个操作一个文件（如 create.rs）
 tests/

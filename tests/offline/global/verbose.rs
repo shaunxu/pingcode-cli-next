@@ -13,6 +13,7 @@ fn verbose_help_documents_http_logging() {
 #[test]
 fn verbose_logs_token_request_to_stderr_without_leaking_secret() {
     // 指向不可路由的地址：令牌换取必然失败，但失败前应先把请求日志打到 stderr。
+    // doctor 把连通性/令牌换取作为检查项，失败时退出码为 1 而非普通命令错误码。
     let secret = "super-secret-value-123";
     pc().arg("-v")
         .arg("--base-url")
@@ -21,9 +22,10 @@ fn verbose_logs_token_request_to_stderr_without_leaking_secret() {
         .arg("test-client")
         .arg("--client-secret")
         .arg(secret)
-        .arg("state")
+        .arg("doctor")
         .assert()
         .failure()
+        .code(1)
         .stderr(predicate::str::contains("] REQUEST GET"))
         .stderr(predicate::str::contains("/v1/auth/token"))
         .stderr(predicate::str::contains("client_secret=***"))

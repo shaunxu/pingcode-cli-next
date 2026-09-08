@@ -54,7 +54,7 @@ idea_review、ticket、page；附件还允许 workitem_deliverable）。
 - `entity_properties`（`/v1/entity_properties`）：create/list/get/delete，以
   `entity_type`（workitem|idea|ticket|testcase）+ `entity_id` 定位。create 请求体需
   `property_key`、`value`（JSON ≤2KB）、`overwrite`（1|0）。没有 update。
-- `getMyself`（`GET /v1/myself`）是真实端点，但已被 `state` 命令使用，不做独立命令。
+- `getMyself`（`GET /v1/myself`）是真实端点，但已被 `doctor` 命令使用（token 类型探测），不做独立命令。
 
 ## 服务端不存在的操作（不要臆造）
 

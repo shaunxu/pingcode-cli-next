@@ -99,14 +99,17 @@ Body
 
 日志中的敏感信息会自动脱敏：Authorization 头显示为 `Bearer ***`，令牌换取请求 URL 中的 `client_secret` 与响应中的 `access_token` 掩码为 `***`，multipart 上传只列字段名/文件名/字节数而不打印文件内容。
 
-少数命令不遵循三级模式（如 `state`），作为自由命令直接挂在顶层：
+少数命令不遵循三级模式（如 `doctor`），作为自由命令直接挂在顶层：
 
 ```bash
 pc --help
-pc state                      # 以 JSON 展示认证状态、企业与用户信息
-PC_CLIENT_ID=<ID> PC_CLIENT_SECRET=<SECRET> pc state
-pc --token <TOKEN> state
+pc doctor                     # 诊断配置与连通性，输出结构化报告与修复建议
+PC_CLIENT_ID=<ID> PC_CLIENT_SECRET=<SECRET> pc doctor
+pc --token <TOKEN> doctor
+pc doctor --dry-run           # 只做静态检查，不发网络请求
 ```
+
+`doctor` 把每一项检查（base URL 格式、凭据是否齐全/成对、主机可达性、令牌换取、API 鉴权、令牌类型）作为一条稳定 `id` 的结果输出到 stdout（pretty JSON），人类可读的勾叉清单输出到 stderr；失败项带 `remediation.steps` 修复步骤，可供人或 AI agent 直接照做。退出码：`0` 全部通过（warn/info/skipped 不算失败），`1` 至少一项检查失败（读 stdout 的 `checks[].remediation` 修复），`2` 命令自身异常。`--dry-run` 时只跑静态检查，网络项标记为 `skipped`。
 
 ## 开发
 

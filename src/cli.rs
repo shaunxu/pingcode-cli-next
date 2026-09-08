@@ -124,6 +124,6 @@ pub enum Command {
         #[command(subcommand)]
         command: reviews::ReviewsCommand,
     },
-    /// Show authentication status along with the current team (enterprise) and user info
-    State,
+    /// Check configuration and connectivity, print a structured diagnostic report with remediation steps
+    Doctor,
 }

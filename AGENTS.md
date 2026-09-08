@@ -55,25 +55,25 @@
 ## 代码约定
 
 - **CLI 面向用户的输出文字一律用英文**：clap 帮助文本（`#[command(about)]` / `#[arg(help)]` / doc comment）、错误消息（`bail!` / `anyhow` / `thiserror` 的 `#[error(...)]`）、`println!` / `eprintln!` 输出、`.expect()` 消息。跟随现有 `cli.rs` / `config.rs` / `client/error.rs` 的写法，不要写成中文。代码内部的注释和 doc comment 仍可用中文。
-- **命令分两类**：三级命令（`pc <module> <resource> <operation>`，如 `pc pjm workitem create`）按模块/资源目录组织；自由命令（如 `state`）放 `commands/dynamic/`。新增方式见下方"架构"。
+- **命令分两类**：三级命令（`pc <module> <resource> <operation>`，如 `pc pjm workitem create`）按模块/资源目录组织；自由命令（如 `doctor`）放 `commands/dynamic/`。新增方式见下方"架构"。
 - 全局参数（`--dry-run`、`-v` 等）在 `cli.rs` 的 `Cli` 上用 `global = true` 声明，子命令前后均可放置。**所有命令的返回结果统一以 pretty-print JSON 输出到 stdout**（用 `output::print_json`），没有人类可读文本模式，也没有 `--json` 开关。`--dry-run` 不换令牌、不发网络、允许无凭据；写操作的请求体统一通过 `--data` 传入（内联 / `@file` / `@-` stdin），用 `output::read_data` + `output::ensure_object` 解析。`-v/--verbose` 把**每个 HTTP 请求/响应**打到 stderr 排查问题（不影响 stdout 的 JSON 结果）：`[<UTC 毫秒时间戳>] REQUEST <method> <url>` / `[<UTC 毫秒时间戳>] RESPONSE <status> <url> (<耗时>ms)`，随后 `Headers` / `Body` 两段均为 pretty JSON（用 `output::log_http_request` / `output::log_http_response`，时间戳在 `output.rs` 内用 `SystemTime` + days-from-civil 算法自格式化，不引时间库）；敏感信息必须脱敏：Authorization 头输出 `Bearer ***`、令牌换取 URL 的 `client_secret` 与响应体的 `access_token` 掩码、reqwest 连接错误消息回显的 URL 经 `ClientError::HttpRedacted` 脱敏、multipart 只输出字段摘要不打印文件内容。
 - rustfmt：`max_width = 100`、Unix 换行（`rustfmt.toml`）。
-- 错误处理：库层用 `thiserror`（`ClientError`），应用层用 `anyhow`；`main()` 返回 `anyhow::Result`。
+- 错误处理：库层用 `thiserror`（`ClientError`），应用层用 `anyhow`；`commands::run` 返回 `anyhow::Result<u8>`（成功时携带进程退出码），`main()` 返回 `std::process::ExitCode`：普通命令成功 `0`、`Err` 映射为 `2`；`doctor` 额外用 `Ok(1)` 表示检查发现配置问题（报告已输出到 stdout）。
 - **每个命令入口必须写明对应的官方文档地址**：新建命令（包括仅创建入口、`run()` 还是 `todo!()` 桩的情况）时，在操作文件的 `run` 函数 doc comment 中写入该端点的 REST 方法/路径与文档页面 URL（形如 `文档：https://developer.alpha.pingcode.live/restapi/pingcode/<pageName>`），同时在资源/模块 `mod.rs` 的枚举变体 doc comment 中附同一 URL（`Docs: <url>`），方便后续实现时引用核对。样板见 `src/commands/pjm/project/`。注意 `todo!()` 是格式化宏，消息文本中的路径参数用 `<project_id>` 形式而不是 `{project_id}`，避免被当成 format 占位符。
 
 ## 架构
 
-- `src/main.rs` — 入口：解析 CLI → `Config::from_cli` → `commands::run`。
+- `src/main.rs` — 入口：解析 CLI → `commands::run(cli) -> Result<u8>` → 退出码映射（`Ok(0)` 成功、`Ok(1)` doctor 检查失败、`Err` 打印错误并退出码 `2`）。
 - `src/cli.rs` — clap derive 定义。全局参数 `--base-url` / `--client-id` / `--client-secret` / `--token` / `-v`，对应环境变量 `PC_OPEN_API_BASE_URL` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_TOKEN`。
 - `src/config.rs` — 参数与环境变量合并。认证二选一：客户端凭据模式（`PC_CLIENT_ID` + `PC_CLIENT_SECRET` 成对出现，缺一报错）或直接给令牌（`--token` / `PC_TOKEN`）；都没有即报错。base-url 默认 `https://api.pingcode.com`，必须以 `http(s)://` 开头。
-- `src/client/mod.rs` — `PingCodeClient::new()` 为 **async**：客户端凭据模式先 `GET /v1/auth/token?grant_type=client_credentials&client_id=...&client_secret=...` 换取企业令牌（见 `fetch_enterprise_token`），再以 Bearer token 鉴权；`--dry-run` 时跳过换取。`get`/`get_with_query`（带查询参数，值拼为 `?k=v` 并百分号编码，dry-run 预览含完整 URL）/`post`/`patch`/`put`/`delete` 都基于私有 `request(method, path, query, body)`：请求 `{base_url}{path}`，响应 JSON 反序列化为 `T`，非 2xx 返回 `ClientError::Api { status, body }`；dry-run 时通过 `output::print_dry_run` 向 stderr 打印方法/URL/请求体并返回空值，不发网络；`-v/--verbose` 时通过 `output::log_http_request`/`output::log_http_response` 向 stderr 打印每个请求/响应的时间戳、Headers、Body 与耗时（multipart 走 `multipart_body` 摘要；`fetch_enterprise_token` 也受 verbose 控制并脱敏），令牌请求的连接错误经 `ClientError::HttpRedacted` 脱敏后传播。`Team`（`/v1/directory/team`，企业令牌可用）、`User`（`/v1/myself`，仅用户令牌可用）等响应模型也定义在此。
+- `src/client/mod.rs` — `PingCodeClient::new()` 为 **async**：客户端凭据模式先 `GET /v1/auth/token?grant_type=client_credentials&client_id=...&client_secret=...` 换取企业令牌（`fetch_enterprise_token` 为 `pub(crate)` 自由函数，`doctor` 复用于令牌换取检查），再通过 `PingCodeClient::with_token(base_url, token, verbose, dry_run)` 用已有 Bearer token 构造客户端；`--dry-run` 时跳过换取。`get`/`get_with_query`（带查询参数，值拼为 `?k=v` 并百分号编码，dry-run 预览含完整 URL）/`post`/`patch`/`put`/`delete` 都基于私有 `request(method, path, query, body)`：请求 `{base_url}{path}`，响应 JSON 反序列化为 `T`，非 2xx 返回 `ClientError::Api { status, body }`；dry-run 时通过 `output::print_dry_run` 向 stderr 打印方法/URL/请求体并返回空值，不发网络；`-v/--verbose` 时通过 `output::log_http_request`/`output::log_http_response` 向 stderr 打印每个请求/响应的时间戳、Headers、Body 与耗时（multipart 走 `multipart_body` 摘要；`fetch_enterprise_token` 也受 verbose 控制并脱敏），令牌请求的连接错误经 `ClientError::HttpRedacted` 脱敏后传播。`Team`（`/v1/directory/team`，企业令牌可用）、`User`（`/v1/myself`，仅用户令牌可用）等响应模型也定义在此。
 - `src/output.rs` — `print_json`（pretty-print 到 stdout）、`read_data(spec)`（解析 `--data`：内联 JSON / `@file` / `@-` stdin，`@@` 转义字面量 `@`）、`ensure_object`（写操作请求体必须是 JSON object）、`print_dry_run`、`log_http_request`/`log_http_response`（verbose 模式的请求/响应日志，含 UTC 毫秒时间戳自格式化与 `format_unix_millis` 单测）。
-- `src/commands/mod.rs` — 顶层分发（一个 `match`）：三级命令 `Command::Pjm { command }` → 模块目录的 `run()`；自由命令 `Command::State` → `commands/dynamic/`。
-- `src/commands/context.rs` — `Ctx { client, config }`，所有命令的执行上下文，命令签名统一为 `async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`。
-- `src/commands/dynamic/` — 自由命令（`state.rs` 以 JSON 展示认证状态/企业/用户信息，支持 `--dry-run`）。
+- `src/commands/mod.rs` — 顶层分发（一个 `match`），`run(cli: Cli) -> anyhow::Result<u8>`：`doctor` 在构造 `Config`/`Ctx` 之前特判分发（配置坏了也要能出诊断报告）；其余三级命令 `Command::Pjm { command }` → 模块目录的 `run()`，成功后返回 `Ok(0)`；自由命令 `Command::Doctor` → `commands/dynamic/`。
+- `src/commands/context.rs` — `Ctx { client, config }`，三级命令的执行上下文，命令签名统一为 `async fn run(ctx: &Ctx, args: &XxxArgs) -> anyhow::Result<()>`。
+- `src/commands/dynamic/` — 自由命令（`doctor.rs`：宽松读取 CLI/env 原始配置（不走 `Config::from_cli` 的 bail），跑静态检查 + 网络探针，stdout 输出结构化 JSON 报告（每项检查有稳定 `id`、`status`（pass/fail/warn/info/skipped）、失败带 `remediation.steps`），stderr 输出勾叉清单；退出码 0/1/2，支持 `--dry-run`（只跑静态检查，网络项 skipped））。
 - `src/commands/pjm/` — 三级命令样板：`pjm/mod.rs` 定义模块枚举 `PjmCommand`（资源变体用 struct variant + `#[command(subcommand)]`）；`pjm/workitem/mod.rs` 定义资源枚举 `WorkitemCommand`（操作变体持有 `clap::Args` 参数结构体）；`pjm/workitem/create.rs` 是操作样板：`--data` → `POST /v1/pjm/workitems`。
 - `tests/` — assert_cmd 黑盒集成测试，分两个独立 test binary：
-  - **离线测试** `tests/offline.rs`（入口）+ `tests/offline/`：全部离线，dry-run/help/参数校验用例无凭据运行。入口用 `#[path = "offline/<dir>/mod.rs"] mod ...;` 桥接到子目录（cargo 只把 `tests/` 下一层文件当 test binary）。公共 helper `pc()` 在 `tests/offline/common/mod.rs`；测试按命令模块分目录组织，粒度到资源一级（同一资源的所有操作测试放同一文件）：`offline/dynamic/state.rs` 对应自由命令 `state`，`offline/pjm/<resource>.rs`（如 `pjm/workitem.rs`、`pjm/project.rs`）对应三级命令资源。
+  - **离线测试** `tests/offline.rs`（入口）+ `tests/offline/`：全部离线，dry-run/help/参数校验用例无凭据运行。入口用 `#[path = "offline/<dir>/mod.rs"] mod ...;` 桥接到子目录（cargo 只把 `tests/` 下一层文件当 test binary）。公共 helper `pc()` 在 `tests/offline/common/mod.rs`；测试按命令模块分目录组织，粒度到资源一级（同一资源的所有操作测试放同一文件）：`offline/dynamic/doctor.rs` 对应自由命令 `doctor`，`offline/pjm/<resource>.rs`（如 `pjm/workitem.rs`、`pjm/project.rs`）对应三级命令资源。
   - **Live 测试** `tests/live.rs`（入口）+ `tests/live/`：对真实 PingCode Open API 发请求的端到端旅程测试，默认全部跳过（门控见下方「Live 测试」）。harness 在 `tests/live/common.rs`，旅程在 `tests/live/journeys/`（一个业务链路一个 `#[test]`）。
 
 **新增三级命令**（module/resource/operation）：
@@ -82,12 +82,12 @@
 3. 若是新资源，在模块 `mod.rs` 的枚举加 struct 变体 `Foo { #[command(subcommand)] command: FooCommand }` 并加分发；
 4. 若是新模块，在 `src/cli.rs` 的 `Command` 加同样的 struct 变体，并在 `src/commands/mod.rs` 的顶层 match 加分支。
 
-**新增自由命令**：在 `src/commands/dynamic/` 建文件实现 `pub async fn run(ctx: &Ctx) -> Result<()>`，在 `src/cli.rs` 的 `Command` 加单元变体，在 `src/commands/mod.rs` 顶层 match 加分支。
+**新增自由命令**：在 `src/commands/dynamic/` 建文件实现 `pub async fn run(...) -> anyhow::Result<u8>`（返回进程退出码，普通成功 `Ok(0)`），在 `src/cli.rs` 的 `Command` 加单元变体，在 `src/commands/mod.rs` 顶层 match 加分支。需要宽松读取配置（不经 `Config::from_cli` 的 bail）时参考 `doctor.rs` 的 `read_raw_config`（clap `ValueSource` 判定值来自 cli/env/default）。
 
 ## 测试注意事项
 
 - 离线测试不打真实 API。`tests/offline/common/mod.rs` 的 `pc()` helper 会主动 `env_remove` 掉 `PC_TOKEN` / `PC_CLIENT_ID` / `PC_CLIENT_SECRET` / `PC_OPEN_API_BASE_URL`，避免宿主环境污染断言——新增离线 CLI 测试沿用该模式：测试文件头部 `use crate::common::pc;`，按所属资源放进 `tests/offline/pjm/<resource>.rs`（新资源需在 `tests/offline/pjm/mod.rs` 加 `mod` 声明，并在 `tests/offline.rs` 的 `#[path]` 桥接已覆盖的目录内），自由命令放进 `tests/offline/dynamic/`。
-- 没有 mock server 或测试 fixtures；要测真实端点见下方「Live 测试」，或手动用有效凭据运行（`PC_CLIENT_ID=xxx PC_CLIENT_SECRET=yyy cargo run -- state`）。
+- 没有 mock server 或测试 fixtures；要测真实端点见下方「Live 测试」，或手动用有效凭据运行（`PC_CLIENT_ID=xxx PC_CLIENT_SECRET=yyy cargo run -- doctor`）。
 
 ## Live 测试
 

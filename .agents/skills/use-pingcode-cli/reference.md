@@ -13,7 +13,7 @@
 
 ## 鉴权与环境变量
 
-三选一，`pc state` 用来验证是否配置成功：
+三选一，`pc doctor` 用来验证是否配置成功：
 
 | 方式 | 变量 / 参数 | 说明 |
 |---|---|---|
@@ -33,7 +33,7 @@
 - `testhub` 测试管理：libraries（测试库）、testcases（用例）、testplans（计划）、testruns（执行）及配置。
 - `wiki` 知识管理：spaces（空间）、pages（页面）、space members。
 - 顶层通用资源：`comments`、`attachments`、`participants`（关注人）、`relations`、`reviews`、`activities`、`workload`（工时）、`entity-properties`、`permission`、`expression`、`security`（日志）。
-- `state`：查看鉴权状态 + 当前企业/用户信息（连通性自检）。
+- `doctor`：配置与连通性自检。stdout 输出结构化 JSON 报告（`ok`、`summary`、`config.credential_sources`、`identity.team/user`、`checks[]`），每项检查有稳定 `id` 与 `status`（pass/fail/warn/info/skipped），失败项带 `remediation.steps` 修复步骤；stderr 是人类可读勾叉清单。退出码：0=全部通过，1=有检查失败（读 `checks[].remediation` 修复），2=命令自身异常。`--dry-run` 只跑静态检查。常用检查 id：`credentials_present`（缺凭据）、`credential_pair`（id/secret 不成对）、`credential_conflict`（token 与 client 凭据同设，warn）、`base_url_format`、`base_url_reachable`（网络/地址不通）、`token_exchange`（client 凭据被拒）、`api_auth`（token 无效/越权）、`token_kind`（用户/企业令牌，info）。
 
 发现具体命令一律用 `pc <module> --help` 逐级下钻，不要凭记忆拼参数。
 
