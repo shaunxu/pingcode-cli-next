@@ -83,7 +83,9 @@ tests/
   offline/         # 离线集成测试（dry-run / help / 参数校验）
   live/            # Live 旅程测试（真实 API，默认跳过）
 scripts/           # 构建 / 开发 / 测试 / 发版脚本
-tools/             # 发版工具（release.py）与在线文档检索脚本（search_nexus_docs.py）
+tools/             # 发版工具（release.py）
+skills/            # 可分发的 agent skills（如 search-pingcode-api-docs，含其脚本）
+.agents/skills/    # 本仓库 agent 自动加载的 skills（指向 skills/ 的 symlink）
 ```
 
 ### 新增命令

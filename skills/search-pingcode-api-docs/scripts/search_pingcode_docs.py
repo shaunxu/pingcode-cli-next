@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Search Nexus developer documentation at https://developer.alpha.pingcode.live.
+Search PingCode developer documentation at https://developer.alpha.pingcode.live.
 
 The script fetches sitemap.xml, scores each URL by keyword matches against
 the URL, title and description, then downloads the most promising pages and
@@ -8,9 +8,9 @@ extracts readable text from <main> until it has gathered enough relevant
 content.
 
 Examples:
-    python3 -m scripts.search_nexus_docs "custom ui react"
-    python3 -m scripts.search_nexus_docs manifest permissions --max-pages 3
-    python3 -m scripts.search_nexus_docs "resolver" --json
+    python3 search_pingcode_docs.py "work item rest api"
+    python3 search_pingcode_docs.py "project list" --max-pages 5
+    python3 search_pingcode_docs.py "oauth scope permissions" --json
 """
 
 import argparse
@@ -26,7 +26,7 @@ from html.parser import HTMLParser
 SITEMAP_URL = "https://developer.alpha.pingcode.live/sitemap.xml"
 BASE_URL = "https://developer.alpha.pingcode.live"
 DEFAULT_TIMEOUT = 20
-USER_AGENT = "nexus-docs-search/1.0 (+https://developer.alpha.pingcode.live)"
+USER_AGENT = "pingcode-docs-search/1.0 (+https://developer.alpha.pingcode.live)"
 
 
 class TextExtractor(HTMLParser):
@@ -299,7 +299,7 @@ def format_text(result):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Search Nexus developer documentation online.",
+        description="Search PingCode developer documentation online.",
     )
     parser.add_argument("query", help="Search keywords (e.g. 'custom ui react')")
     parser.add_argument(
