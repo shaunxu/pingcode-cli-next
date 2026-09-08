@@ -100,18 +100,23 @@ tools/             # 发版工具（release.py）与在线文档检索脚本（s
 
 ## 发布（维护者）
 
-发版是项目级工具（类似 `npm run release`），由 `scripts/release.sh` 驱动（本地需先 `cargo install cargo-release cargo-dist`）：
+发版是项目级工具（类似 `npm run release`）。main 受 branch protection 保护、不能直接 push，发布分两阶段：本地 prepare 出 release PR → PR 合并后 CI 自动打 tag 触发构建分发。
 
 ```bash
 ./scripts/release.sh --dry-run        # 仅预览新版本号与 CHANGELOG 条目，零副作用（输出 JSON）
-./scripts/release.sh                  # 按 Conventional Commits 自动计算 Semver 并发布
+./scripts/release.sh                  # 自动计算 Semver，建 release 分支并开 PR（本地需 gh 已登录）
 ./scripts/release.sh --version 0.4.0  # 手动指定版本号
 ```
 
-工具链分三层：
+1. 本地跑 `scripts/release.sh`（本地需先 `cargo install cargo-release cargo-dist` 且 `gh auth login`）：脚本校验在 main 上、工作区干净、与 `origin/main` 同步，然后建分支 `release/vX.Y.Z`，由 cargo-release 完成 bump、CHANGELOG、提交（不打 tag、不 push），最后 push 分支并用 `gh` 开标题为 `chore(release): vX.Y.Z` 的 PR。
+2. PR review/approve 后合并（建议 squash merge）。
+3. merge 到 main 后 `.github/workflows/release-tag.yml` 自动创建并推送 annotated tag `vX.Y.Z`，tag 推送触发 cargo-dist 构建分发。**该 workflow 需要仓库 secret `RELEASE_PAT`**（fine-grained PAT，仅授权本仓库、Contents: Read and write）——用 Actions 默认 `GITHUB_TOKEN` 推的 tag 不会触发其他 workflow。tag 已存在时 workflow 幂等直接成功，失败可在 Actions 页面 re-run。一次性配置细节见 [AGENTS.md](AGENTS.md) 的「发布」一节。
+
+工具链分四层：
 
 1. `tools/release.py`（纯 Python 3 标准库，单测为 `tools/test_release.py`）：取最近 git tag、解析之后的提交推断版本（0.x 阶段 breaking/feat → minor、fix/perf → patch；1.0+ 按标准 Semver）；`changelog` 子命令作为 cargo-release 的 pre-release-hook，依据提交重写 `CHANGELOG.md`（只收录 feat/fix/perf 及 BREAKING）。
-2. [cargo-release](https://github.com/crate-ci/cargo-release)（配置见根目录 `release.toml`）：更新 `Cargo.toml`/`Cargo.lock`、运行 changelog hook、提交 `chore(release): vX.Y.Z`、打 annotated tag `vX.Y.Z` 并 push。
-3. [cargo-dist](https://github.com/axodotdev/cargo-dist)（配置见 `dist-workspace.toml`）：tag 推送触发 GitHub Actions workflow（`.github/workflows/release.yml`，由 `dist generate` 生成，**不要手改该文件**），在 Linux/macOS/Windows 三平台交叉编译、打包（`.tar.xz`/`.zip` + `.sha256`），创建 GitHub Release、发布 shell/PowerShell 一键安装脚本，并把 Homebrew formula 推送到 [shaunxu/homebrew-tap](https://github.com/shaunxu/homebrew-tap)。
+2. [cargo-release](https://github.com/crate-ci/cargo-release)（配置见根目录 `release.toml`）：仅 prepare 阶段使用——更新 `Cargo.toml`/`Cargo.lock`、运行 changelog hook、提交 `chore(release): vX.Y.Z`；`tag`/`push` 均关闭（交给 CI）。
+3. `.github/workflows/release-tag.yml`（手写，可自由修改）：release PR 合并后从 `Cargo.toml` 读版本、打 annotated tag 并用 `RELEASE_PAT` 推送。
+4. [cargo-dist](https://github.com/axodotdev/cargo-dist)（配置见 `dist-workspace.toml`）：tag 推送触发 GitHub Actions workflow（`.github/workflows/release.yml`，由 `dist generate` 生成，**不要手改该文件**），在 Linux/macOS/Windows 三平台交叉编译、打包（`.tar.xz`/`.zip` + `.sha256`），创建 GitHub Release、发布 shell/PowerShell 一键安装脚本，并把 Homebrew formula 推送到 [shaunxu/homebrew-tap](https://github.com/shaunxu/homebrew-tap)。
 
-改了 `dist-workspace.toml` 后必须运行 `dist generate` 重新生成 workflow。
+改了 `dist-workspace.toml` 后必须运行 `dist generate` 重新生成 workflow（`release-tag.yml` 是手写的，不受影响）。

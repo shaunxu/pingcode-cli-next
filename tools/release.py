@@ -6,17 +6,20 @@ Two modes, driven by scripts/release.sh and cargo-release:
 1. ``compute`` (called by scripts/release.sh before cargo-release):
    resolves the next SemVer version from Conventional Commits since the
    latest tag (or from --version), validates it and prints a JSON preview.
-   scripts/release.sh then runs ``cargo release <version>`` which bumps
-   Cargo.toml/Cargo.lock, commits, tags and pushes.
+   scripts/release.sh then runs ``cargo release <version>`` on a release
+   branch (no tag, no push) and opens a PR; after the PR merges into main,
+   the release-tag.yml workflow creates and pushes the tag, which triggers
+   the cargo-dist release workflow.
 
 2. ``changelog`` (the cargo-release ``pre-release-hook``):
    regenerates the CHANGELOG.md section for NEW_VERSION from the commits
    between the PREV_VERSION tag and HEAD. Invoked with DRY_RUN by
    cargo-release; when DRY_RUN=true it only prints the entry.
 
-Git operations (commit/tag/push) and version bumping are intentionally
-left to cargo-release; this script only computes versions and maintains
-CHANGELOG.md. Pure standard library, no third-party dependencies.
+Version bumping and the release commit are left to cargo-release; the
+release tag is pushed by CI after the release PR merges. This script only
+computes versions and maintains CHANGELOG.md. Pure standard library, no
+third-party dependencies.
 """
 
 from __future__ import annotations
@@ -268,11 +271,12 @@ def cmd_compute(args: argparse.Namespace) -> int:
         **result,
         "date": today(),
         "actions": [
-            "cargo release bumps Cargo.toml/Cargo.lock",
+            "cargo release bumps Cargo.toml/Cargo.lock on a release branch (no tag, no push)",
             "pre-release-hook regenerates CHANGELOG.md",
             f"git commit -m 'chore(release): {result['tag']}'",
-            f"git tag {result['tag']} (annotated)",
-            "git push origin <branch> and tag",
+            f"scripts/release.sh pushes the branch and opens PR 'chore(release): {result['tag']}'",
+            "after the PR merges to main, release-tag.yml creates and pushes the "
+            f"annotated tag {result['tag']} (via RELEASE_PAT)",
             "cargo-dist CI builds linux/macos/windows, creates the GitHub release, "
             "publishes shell/PowerShell installers and the Homebrew formula",
         ],
