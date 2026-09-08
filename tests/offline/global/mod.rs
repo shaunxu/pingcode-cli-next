@@ -7,5 +7,6 @@ mod participants;
 mod permission;
 mod relations;
 mod reviews;
+mod verbose;
 mod workload;
 mod workload_type;

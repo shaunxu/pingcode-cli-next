@@ -70,6 +70,7 @@ ideas（需求）、tickets（工单）、testcases（用例）等的创建链�
 
 ## HTTP 错误对照（非 2xx 时 CLI 打印 status + body）
 
+- 排查接口问题用 `-v`/`--verbose`：每个 HTTP 请求/响应（UTC 时间戳、方法/状态码、完整 URL、Headers、Body、耗时）打到 stderr，结果 JSON 仍在 stdout 不受影响；敏感信息（Authorization、client_secret、access_token）自动脱敏。
 - `401` / 鉴权失败：令牌无效/过期，或 client-id/secret 缺失。交回用户更新凭据，不要反复重试。
 - `403`：权限/scope 不足。body 通常提示所需 scope（如 `pcp:write:pjm:workitem`）；告知用户该应用/令牌需要对应 scope。
 - `404`：路径或 id 不存在。多半是 id 拿错、或名字→id 解析到了错误对象；回第 3 步重新解析。
