@@ -1,0 +1,46 @@
+name: 功能建议
+description: 建议新的命令、参数或改进
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢建议！请先搜索现有 issue 避免重复。
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 功能描述
+      description: 你希望 pc 支持什么能力？
+      placeholder: 例如：希望支持 `pc pjm sprint list` 命令
+    validations:
+      required: true
+  - type: textarea
+    id: usecase
+    attributes:
+      label: 使用场景
+      description: 这个功能解决什么问题？你目前如何 workaround？
+    validations:
+      required: true
+  - type: input
+    id: api-doc
+    attributes:
+      label: 相关 PingCode Open API 文档地址
+      description: 如该功能对应某个 REST 端点，请附上官方文档 URL（developer.alpha.pingcode.live）
+      placeholder: https://developer.alpha.pingcode.live/restapi/pingcode/...
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考虑过的替代方案
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认
+      options:
+        - label: 我已搜索现有 issue，没有找到相同建议
+          required: true
+        - label: 我愿意提交 PR 实现这个功能（可选）
+          required: false
