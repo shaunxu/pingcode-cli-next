@@ -9,6 +9,15 @@
 
 
 
+
+## [v1.2.0] - 2026-09-09
+
+### Features
+
+- add doctor diagnostic command (646296c)
+- add search-pingcode-api-docs skill (1bf5b7e)
+- relocate use-pingcode-cli under skills/ (b9ace27)
+
 ## [v1.1.0] - 2026-09-08
 
 ### Features
