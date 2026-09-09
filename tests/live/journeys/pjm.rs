@@ -1,6 +1,6 @@
 //! 旅程 A：pjm 项目 + 工作项全链路。
 //!
-//! 步骤：state 冒烟 → 项目列表/创建/详情/进度/成员 → 工作项类型 →
+//! 步骤：项目列表/创建/详情/进度/成员 → 工作项类型 →
 //! 工作项创建/列表/详情/更新 → 标签（若项目已有标签）→ 评论 → 附件（文件上传）→
 //! 实体扩展属性 → 负面用例（不存在的 id）→ 删除工作项。
 //!
@@ -36,19 +36,12 @@ struct State {
 }
 
 fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. state 冒烟：凭据有效、能取到企业信息。
-    let state_out = ctx.run_ok(&["state"]);
-    assert_eq!(state_out["authenticated"], true);
-    assert!(
-        str_field(&state_out["team"], "id").is_some(),
-        "state should expose team id: {state_out}"
-    );
-
-    // 2. 项目列表（基线，仅断言请求成功且是分页信封）。
+    // 1. 项目列表（基线，仅断言请求成功且是分页信封）。凭据有效性由此及后续
+    //    每一个已鉴权请求隐式验证，不再单独冒烟（旧 `pc state` 已由 doctor 取代）。
     let projects = ctx.run_ok(&["pjm", "project", "list", "--page-size", "50"]);
     let _ = values(&projects);
 
-    // 3. 复用或创建项目。
+    // 2. 复用或创建项目。
     if let Some(pid) = &ctx.reuse_project_id {
         s.project_id = pid.clone();
         eprintln!("reusing project {pid} (PC_LIVE_PROJECT_ID)");
@@ -69,7 +62,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         eprintln!("created project {} (id={})", name, s.project_id);
     }
 
-    // 4. 项目列表包含新项目（复用场景下跳过名字断言）。
+    // 3. 项目列表包含新项目（复用场景下跳过名字断言）。
     if s.project_created {
         let list = ctx.run_ok(&[
             "pjm",
@@ -87,18 +80,18 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         );
     }
 
-    // 5. 获取项目详情，字段与创建时一致。
+    // 4. 获取项目详情，字段与创建时一致。
     let project = ctx.run_ok(&["pjm", "project", "get", &s.project_id]);
     assert_eq!(str_field(&project, "id"), Some(s.project_id.as_str()));
     assert!(str_field(&project, "name").is_some());
 
-    // 6. 项目进度、成员列表冒烟。
+    // 5. 项目进度、成员列表冒烟。
     let progress = ctx.run_ok(&["pjm", "project", "progress", &s.project_id]);
     assert!(progress.is_object() || progress.is_null());
     let members = ctx.run_ok(&["pjm", "project-member", "list", &s.project_id]);
     let _ = values(&members);
 
-    // 7. 取项目可用的工作项类型。
+    // 6. 取项目可用的工作项类型。
     let types = ctx.run_ok(&[
         "pjm",
         "workitem-type",
@@ -112,7 +105,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         .ok_or("project has no workitem types")?
         .to_string();
 
-    // 8. 创建工作项。
+    // 7. 创建工作项。
     let title = ctx.unique_name("wi");
     let body = json!({
         "project_id": s.project_id,
@@ -126,7 +119,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     assert_eq!(str_field(&workitem, "title"), Some(title.as_str()));
     eprintln!("created workitem {title} (id={})", s.workitem_id);
 
-    // 9. 工作项列表（按项目过滤）包含新工作项。
+    // 8. 工作项列表（按项目过滤）包含新工作项。
     let list = ctx.run_ok(&["pjm", "workitem", "list", "--project-id", &s.project_id]);
     assert!(
         find_by_id(&values(&list), &s.workitem_id).is_some(),
@@ -134,12 +127,12 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         s.workitem_id
     );
 
-    // 10. 获取工作项详情。
+    // 9. 获取工作项详情。
     let fetched = ctx.run_ok(&["pjm", "workitem", "get", &s.workitem_id]);
     assert_eq!(str_field(&fetched, "id"), Some(s.workitem_id.as_str()));
     assert_eq!(str_field(&fetched, "title"), Some(title.as_str()));
 
-    // 11. 修改工作项标题，详情与列表均反映新值。
+    // 10. 修改工作项标题，详情与列表均反映新值。
     let new_title = ctx.unique_name("wi");
     let body = json!({ "title": new_title });
     let updated = ctx.run_ok(&[
@@ -167,7 +160,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         "workitem list filtered by new title should contain the workitem"
     );
 
-    // 12. 标签：项目标签字典非空时走 add/get/remove；否则跳过（不臆造标签创建）。
+    // 11. 标签：项目标签字典非空时走 add/get/remove；否则跳过（不臆造标签创建）。
     let tags = ctx.run_ok(&[
         "pjm",
         "workitem-tag",
@@ -194,7 +187,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         eprintln!("skip tag steps: project has no pre-defined tags");
     }
 
-    // 13. 评论：create → list 包含 → get 内容一致 → delete。
+    // 12. 评论：create → list 包含 → get 内容一致 → delete。
     let comment_body = json!({
         "principal_type": "workitem",
         "principal_id": s.workitem_id,
@@ -231,7 +224,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         &s.workitem_id,
     ]);
 
-    // 14. 附件（文件，multipart）：upload-file → list 包含 → get → delete。
+    // 13. 附件（文件，multipart）：upload-file → list 包含 → get → delete。
     // 注：代码段附件 `upload-snippet`（POST /v1/attachments JSON）在测试环境稳定返回
     // 400（文档字段核对无误，疑为环境侧差异），暂不覆盖。
     let file_path = write_temp_file("pc-live-upload.txt", "pc live multipart upload\n")?;
@@ -288,7 +281,7 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
     ]);
     assert!(find_by_id(&values(&list), file_id).is_none());
 
-    // 15. 实体扩展属性：create → list 包含 → get key 一致 → delete。
+    // 14. 实体扩展属性：create → list 包含 → get key 一致 → delete。
     let prop_body = json!({
         "entity_type": "workitem",
         "entity_id": s.workitem_id,
@@ -332,11 +325,11 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         &s.workitem_id,
     ]);
 
-    // 16. 负面用例：不存在的工作项 id 应失败。
+    // 15. 负面用例：不存在的工作项 id 应失败。
     let stderr = ctx.run_fail(&["pjm", "workitem", "get", "pcl-nonexistent-id"]);
     assert!(!stderr.is_empty(), "failed get should print an API error");
 
-    // 17. 删除工作项，之后 get 应失败。
+    // 16. 删除工作项，之后 get 应失败。
     ctx.run_ok(&["pjm", "workitem", "delete", &s.workitem_id]);
     ctx.run_fail(&["pjm", "workitem", "get", &s.workitem_id]);
     let deleted_id = s.workitem_id.clone();

@@ -159,7 +159,9 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         assert_eq!(str_field(&updated, "name"), Some(renamed.as_str()));
 
         ctx.run_ok(&["pjm", "release", "delete", &s.project_id, &s.release_id]);
-        ctx.run_fail(&["pjm", "release", "get", &s.project_id, &s.release_id]);
+        // release 是软删除：按 id GET 仍可能返回 200，但已从列表过滤，故用列表断言删除生效。
+        let list = ctx.run_ok(&["pjm", "release", "list", &s.project_id]);
+        assert!(find_by_id(&values(&list), &s.release_id).is_none());
         s.release_id.clear();
         eprintln!("release CRUD verified");
     } else {

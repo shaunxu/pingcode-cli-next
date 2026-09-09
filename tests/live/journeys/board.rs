@@ -159,7 +159,9 @@ fn run_steps(ctx: &LiveCtx, s: &mut State) -> Result<(), Box<dyn std::error::Err
         &s.swimlane_id,
     ]);
     ctx.run_ok(&["pjm", "board", "delete", &s.project_id, &s.board_id]);
-    ctx.run_fail(&["pjm", "board", "get", &s.project_id, &s.board_id]);
+    // board 是软删除：按 id GET 仍可能返回 200，但已从列表过滤，故用列表断言删除生效。
+    let list = ctx.run_ok(&["pjm", "board", "list", &s.project_id]);
+    assert!(find_by_id(&values(&list), &s.board_id).is_none());
     s.board_id.clear();
     s.entry_id.clear();
     s.swimlane_id.clear();
