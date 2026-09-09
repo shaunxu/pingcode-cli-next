@@ -1,10 +1,18 @@
-# 两阶段发布的第二阶段：release PR 合并到 main 后，为 Cargo.toml 中的版本
-# 创建并推送 annotated tag vX.Y.Z；tag 推送触发 cargo-dist 生成的
-# release.yml（三平台构建、GitHub Release、安装脚本、Homebrew tap）。
+# 两阶段发布的第二阶段：release PR 合并到 main 后，先跑 live 端到端测试
+# 门禁（live-test job），通过后再为 Cargo.toml 中的版本创建并推送 annotated
+# tag vX.Y.Z；tag 推送触发 cargo-dist 生成的 release.yml（三平台构建、
+# GitHub Release、安装脚本、Homebrew tap）。
 #
 # 只有 head 提交是 release 提交（提交消息含 "chore(release): vX.Y.Z"，
-# squash / rebase / merge commit 三种合并方式均覆盖）时才打 tag；普通
-# PR 合并直接跳过。也支持 workflow_dispatch 手动触发（用于补发未打的 tag）。
+# squash / rebase / merge commit 三种合并方式均覆盖）时才跑测试/打 tag；
+# 普通 PR 合并直接跳过。也支持 workflow_dispatch 手动触发（用于补发未打的
+# tag），手动触发默认也跑测试，可用 skip-tests 输入显式跳过。
+#
+# 为什么门禁在这里而不是 cargo-dist 的 plan-jobs：release.yml 由 dist
+# 生成不能手改，而 dist 0.32.0 的 plan-jobs 只接入 build-local-artifacts
+# 的 needs，host job 的 if 把「因上游失败而 skipped」与「正常 skipped」
+# 一视同仁，gate 失败时 host 仍会执行并产生空 GitHub Release。tag 是
+# release.yml 的唯一触发源，在打 tag 之前卡住即可从源头杜绝该问题。
 #
 # 注意一：必须用 PAT（secret RELEASE_PAT）推 tag——用 Actions 默认
 # GITHUB_TOKEN 推送的 tag 不会触发 on: push: tags 的其他 workflow
@@ -22,6 +30,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: "Skip the live test gate when re-issuing a missing tag"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,7 +44,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Live 端到端测试门禁：失败则整个 workflow 失败，tag job 不会执行，
+  # cargo-dist 发布 workflow 也就不会被触发。
+  live-test:
+    if: >-
+      ${{
+        (github.event_name == 'workflow_dispatch' && inputs.skip-tests != true) ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, 'chore(release): v'))
+      }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run live tests
+        env:
+          PC_CLIENT_ID: ${{ secrets.PC_CLIENT_ID }}
+          PC_CLIENT_SECRET: ${{ secrets.PC_CLIENT_SECRET }}
+          PC_OPEN_API_BASE_URL: ${{ vars.PC_OPEN_API_BASE_URL }}
+        run: ./scripts/live-test.sh
+
   tag:
+    needs:
+      - live-test
+    # live-test 被跳过时（普通 push / 手动 skip-tests）放行；失败时此 job
+    # 被级联跳过，不打 tag。
+    if: ${{ always() && (needs.live-test.result == 'success' || needs.live-test.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
